@@ -37,6 +37,7 @@ type AnalyserStyle struct {
 	StmtEnd []string
 	CommentBegin []string
 	Quote []string
+	BeginSectWithStmt bool
 
 	SectBeginPrefix []string
 	SectBeginSuffix []string
@@ -47,4 +48,12 @@ type AnalyserStyle struct {
 type Analyser struct {
 	Style *AnalyserStyle
 	Root *DocNode
+	text string
+	here int
+}
+
+type Context struct {
+	// Val, Comment, Stmt, or Sect
+	this interface{}
+
 }
