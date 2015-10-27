@@ -13,7 +13,7 @@ func (an *Analyser) LookFor(match []string) (string, int) {
 	return "", 0
 }
 
-func (an *Analyser) LookForSpaces() int {
+func (an *Analyser) LookForSpaces() (string, int) {
 	pos := an.here
 	for ; pos < len(an.text); pos++ {
 		switch an.text[pos] {
@@ -25,27 +25,24 @@ func (an *Analyser) LookForSpaces() int {
 			break
 		}
 	}
-	return pos - an.here
+	return an.text[an.here: pos], pos - an.here
 }
 
 func (an *Analyser) Analyse() {
 	var adv int
+	var spaces string
 	for an.here = 0; an.here < len(an.text); an.here += adv {
 		var style string
 		if style, adv = an.LookFor(an.Style.CommentBegin); adv > 0 {
 			an.NewComment(style)
 		} else if style, adv = an.LookFor(an.Style.Quote); adv > 0 {
 			an.SetQuote(style)
-		} else if adv = an.LookForSpaces(); adv > 0 {
-			// Either
-			an.SetTrailingSpaces(adv)
-			an.SetIndent(adv)
+		} else if spaces, adv = an.LookForSpaces(); adv > 0 {
+			an.SetTrailingSpacesOrIndent(spaces)
 		} else if style, adv = an.LookFor(an.Style.StmtContinue); adv > 0 {
-			an.ContinueStmt(style, true)
+			an.ContinueStmt(style)
 		} else if style, adv = an.LookFor(an.Style.StmtEnd); adv > 0 {
-			if !an.ContinueStmt {
-				an.EndStmt(true)
-			}
+			an.EndStmt(style)
 		} else if style, adv = an.LookFor(an.Style.SectBeginPrefix); adv > 0 {
 			an.NewSection(style)
 		} else if style, adv = an.LookFor(an.Style.SectBeginSuffix); adv > 0 {
