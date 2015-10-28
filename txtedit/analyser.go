@@ -24,7 +24,8 @@ type Stmt struct {
 }
 
 type Sect struct {
-	Begin *Stmt
+	BeginPrefix, BeginSuffix string
+	EndPrefix, EndSuffix string
 	// Stmt or Sect
 	Pieces []interface{}
 	End *Stmt
@@ -42,7 +43,7 @@ type AnalyserStyle struct {
 	StmtEnd []string
 	CommentBegin []string
 	Quote []string
-	BeginSectWithStmt bool
+	BeginSectWithStmt, EndSectWithStmt bool
 
 	SectBeginPrefix []string
 	SectBeginSuffix []string
@@ -165,6 +166,76 @@ func (an *Analyser) EndStmt(style string) {
 	}
 	an.stmtCtx.End = style
 	if an.nodeCtx == nil {
-		an.nodeCtx
+		an.NewLeaf()
+		an.nodeCtx.Obj = an.stmtCtx
+	}
+	an.stmtCtx = nil
+}
+
+func (an *Analyser) NewSection(style string) {
+	if an.nodeCtx.Obj == nil {
+		an.NewLeaf()
+		an.nodeCtx.Obj = &Sect{BeginPrefix:style}
+	} else {
+		switch an.nodeCtx.Obj.(type) {
+		case *Sect:
+			an.NewBranch()
+			an.nodeCtx.Obj = &Sect{BeginPrefix:style}
+		case *Stmt:
+			if an.Style.BeginSectWithStmt {
+				an.NewBranch()
+			} else {
+				an.EndStmt("")
+				an.NewLeaf()
+			}
+			an.nodeCtx.Obj = &Sect{BeginPrefix: style}
+		}
+	}
+}
+
+func (an *Analyser) NewValIfNotSect(content string) (*Sect ){
+	sect, isSect := an.nodeCtx.Obj.(*Sect)
+	if an.nodeCtx.Obj == nil || !isSect {
+		if an.stmtCtx == nil {
+			an.NewStmt()
+		}
+		if an.valCtx == nil {
+			an.NewVal()
+		}
+		an.valCtx.Text = content
+		return sect
+	}
+	return nil
+}
+
+func (an *Analyser) SetSectBeginSuffix(style string) {
+	sect := an.NewValIfNotSect(style)
+	if sect != nil {
+		sect.BeginSuffix = style
+	}
+}
+
+func (an *Analyser) EndSect() {
+	???
+}
+
+func (an *Analyser) SetSectEndPrefix(style string) {
+	sect := an.NewValIfNotSect(style)
+	if sect != nil {
+		if an.Style.EndSectWithStmt {
+			???
+		} else {
+			???
+		}
+		sect.EndPrefix = style
+	}
+}
+
+func (an *Analyser) SetSectEndSuffix(style string) {
+	sect := an.NewValIfNotSect(style)
+	if sect != nil {
+		if an.Style.EndSectWithStmt {
+			???
+		}
 	}
 }
