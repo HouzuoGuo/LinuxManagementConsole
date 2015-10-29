@@ -1,5 +1,8 @@
 package txtedit
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Val struct {
 	QuoteStyle string
@@ -24,6 +27,7 @@ type Stmt struct {
 }
 
 type Sect struct {
+	Begin *Stmt
 	BeginPrefix, BeginSuffix string
 	EndPrefix, EndSuffix string
 	// Stmt or Sect
@@ -54,188 +58,41 @@ type AnalyserStyle struct {
 type Analyser struct {
 	Style *AnalyserStyle
 	Root *DocNode
+
 	text string
 	here int
-
-	inQuote bool
-	contStmt bool
-	valCtx *Val
-	commentCtx *Comment
-	stmtCtx *Stmt
-	nodeCtx *DocNode
+	this *DocNode
 }
 
-func (an *Analyser) NewStmt() {
-	if an.stmtCtx != nil {
-		an.nodeCtx.Leaves = append(an.nodeCtx.Leaves, an.stmtCtx)
-	}
-	an.stmtCtx = new(Stmt)
+func NewAnalyser(style *AnalyserStyle, input string) (ret *Analyser ){
+	ret = &Analyser{Style: style, text: input}
+	ret.this = &DocNode{Parent: nil, Obj: nil, Leaves:make([]*DocNode, 0, 8)}
+	ret.Root = ret.this
+	return
 }
 
-func (an *Analyser) EndVal() {
-	if an.valCtx == nil {
-		return // do nothing
-	}
-	if an.stmtCtx == nil {
-		an.NewStmt()
-	} else {
-		an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.valCtx)
-	}
-	an.valCtx = nil
-	an.inQuote = false
-}
-
-func (an *Analyser) NewComment(style string) {
-	if an.valCtx != nil {
-		an.EndVal()
-	}
-	if an.commentCtx != nil {
-		return // already a comment
-	}
-	an.commentCtx = new(Comment)
-}
-
-func (an *Analyser) NewVal() {
-	if an.valCtx != nil {
-		if an.stmtCtx == nil {
-			an.NewStmt()
-		}
-		an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.valCtx)
-	}
-	an.valCtx = new(Val)
-	an.inQuote = false
-}
-
-func (an *Analyser) SetQuote(style string) {
-	if an.valCtx == nil {
-		an.NewVal()
-	} else {
-		an.valCtx.QuoteStyle = style
-	}
-}
-
-func (an *Analyser) SetTrailingSpacesOrIndent(spaces string) {
-	if an.valCtx == nil {
-		if an.stmtCtx == nil {
-			an.NewStmt()
-			an.stmtCtx.Indent = spaces
-		} else if len(an.stmtCtx.Pieces) > 0{
-			lastPiece := an.stmtCtx.Pieces[len(an.stmtCtx.Pieces - 1)]
-			switch t := lastPiece.(type) {
-			case Comment:
-				t.Content += spaces
-			case Val:
-				t.TrailingSpaces += spaces
-			}
-		} else {
-			an.stmtCtx.Indent = spaces
-		}
-	} else {
-		if !an.inQuote {
-			an.valCtx.TrailingSpaces = spaces
-		}
-	}
-}
-
-func (an *Analyser) ContinueStmt(style string) {
-	an.EndVal()
-	if an.stmtCtx == nil {
-		an.NewStmt()
-	}
-	an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, &StmtContinue{style})
-}
-
-func (an *Analyser) NewLeaf() {
-	if an.nodeCtx != nil {
-		an.nodeCtx.Parent.Leaves = append(an.nodeCtx.Parent.Leaves, an.nodeCtx)
-	}
-	an.nodeCtx = &DocNode{Parent:an.nodeCtx.Parent}
-}
-
-func (an *Analyser) NewBranch() {
-	if an.nodeCtx != nil {
-		an.nodeCtx.Parent.Leaves = append(an.nodeCtx.Parent.Leaves, an.nodeCtx)
-	}
-	an.nodeCtx = &DocNode{Parent: an.nodeCtx}
-}
-
-func (an *Analyser) EndStmt(style string) {
-	if an.stmtCtx == nil {
-		fmt.Println("!!ending a statement without starting one!!")
+func DebugNode(node *DocNode, indent int) {
+	prefix := strings.Repeat(" ", indent)
+	if node == nil {
+		fmt.Println(prefix + "(nil)")
 		return
 	}
-	an.stmtCtx.End = style
-	if an.nodeCtx == nil {
-		an.NewLeaf()
-		an.nodeCtx.Obj = an.stmtCtx
-	}
-	an.stmtCtx = nil
-}
-
-func (an *Analyser) NewSection(style string) {
-	if an.nodeCtx.Obj == nil {
-		an.NewLeaf()
-		an.nodeCtx.Obj = &Sect{BeginPrefix:style}
+	fmt.Print(prefix + "Node - ", node.Obj)
+	if len(node.Leaves) > 0 {
+		fmt.Println(" -->")
+		for _, leaf := range node.Leaves {
+			DebugNode(leaf, indent + 2)
+		}
 	} else {
-		switch an.nodeCtx.Obj.(type) {
-		case *Sect:
-			an.NewBranch()
-			an.nodeCtx.Obj = &Sect{BeginPrefix:style}
-		case *Stmt:
-			if an.Style.BeginSectWithStmt {
-				an.NewBranch()
-			} else {
-				an.EndStmt("")
-				an.NewLeaf()
-			}
-			an.nodeCtx.Obj = &Sect{BeginPrefix: style}
-		}
+		fmt.Println()
 	}
 }
 
-func (an *Analyser) NewValIfNotSect(content string) (*Sect ){
-	sect, isSect := an.nodeCtx.Obj.(*Sect)
-	if an.nodeCtx.Obj == nil || !isSect {
-		if an.stmtCtx == nil {
-			an.NewStmt()
-		}
-		if an.valCtx == nil {
-			an.NewVal()
-		}
-		an.valCtx.Text = content
-		return sect
-	}
-	return nil
-}
 
-func (an *Analyser) SetSectBeginSuffix(style string) {
-	sect := an.NewValIfNotSect(style)
-	if sect != nil {
-		sect.BeginSuffix = style
-	}
-}
-
-func (an *Analyser) EndSect() {
-	???
-}
-
-func (an *Analyser) SetSectEndPrefix(style string) {
-	sect := an.NewValIfNotSect(style)
-	if sect != nil {
-		if an.Style.EndSectWithStmt {
-			???
-		} else {
-			???
-		}
-		sect.EndPrefix = style
-	}
-}
-
-func (an *Analyser) SetSectEndSuffix(style string) {
-	sect := an.NewValIfNotSect(style)
-	if sect != nil {
-		if an.Style.EndSectWithStmt {
-			???
-		}
+func Print(root *DocNode) {
+	fmt.Println(root.Obj)
+	fmt.Println("-->")
+	for _, leaf := range root.Leaves {
+		Print(leaf)
 	}
 }

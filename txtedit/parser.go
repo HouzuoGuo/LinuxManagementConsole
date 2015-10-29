@@ -1,10 +1,11 @@
 package txtedit
+import "fmt"
 
 func (an *Analyser) LookFor(match []string) (string, int) {
 	for _, style := range match {
 		if an.here + len(match) >= len(an.text) {
 			continue
-		} else if string(an.text[an.here:an.here + len(match)]) != match {
+		} else if string(an.text[an.here:an.here + len(match)]) != style {
 			continue
 		} else {
 			return style, len(style)
@@ -16,12 +17,7 @@ func (an *Analyser) LookFor(match []string) (string, int) {
 func (an *Analyser) LookForSpaces() (string, int) {
 	pos := an.here
 	for ; pos < len(an.text); pos++ {
-		switch an.text[pos] {
-		case ' ':
-			continue
-		case '\t':
-			continue
-		default:
+		if an.text[pos] != ' ' && an.text[pos] != '\t' {
 			break
 		}
 	}
@@ -34,23 +30,23 @@ func (an *Analyser) Analyse() {
 	for an.here = 0; an.here < len(an.text); an.here += adv {
 		var style string
 		if style, adv = an.LookFor(an.Style.CommentBegin); adv > 0 {
-			an.NewComment(style)
+			fmt.Println("New comment: " + style)
 		} else if style, adv = an.LookFor(an.Style.Quote); adv > 0 {
-			an.SetQuote(style)
+			fmt.Println("Quote: " + style)
 		} else if spaces, adv = an.LookForSpaces(); adv > 0 {
-			an.SetTrailingSpacesOrIndent(spaces)
+			fmt.Println("Spaces: ", adv, spaces)
 		} else if style, adv = an.LookFor(an.Style.StmtContinue); adv > 0 {
-			an.ContinueStmt(style)
+			fmt.Println("StmtContinue: " + style)
 		} else if style, adv = an.LookFor(an.Style.StmtEnd); adv > 0 {
-			an.EndStmt(style)
+			fmt.Println("StmtEnd: " + style)
 		} else if style, adv = an.LookFor(an.Style.SectBeginPrefix); adv > 0 {
-			an.NewSection(style)
+			fmt.Println("SectBeginPrefix: " + style)
 		} else if style, adv = an.LookFor(an.Style.SectBeginSuffix); adv > 0 {
-			an.SetSectBeginSuffix(style)
+			fmt.Println("SectBeginSuffix: " + style)
 		} else if style, adv = an.LookFor(an.Style.SectEndPrefix); adv > 0 {
-			an.SetSectEndPrefix(style)
+			fmt.Println("SectEndPrefix: " + style)
 		} else if style, adv = an.LookFor(an.Style.SectEndSuffix); adv > 0 {
-			an.SetSectEndSuffix(style)
+			fmt.Println("SectEndSuffix: " + style)
 		} else {
 			adv = 1
 		}
