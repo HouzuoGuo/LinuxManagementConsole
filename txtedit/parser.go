@@ -30,23 +30,34 @@ func (an *Analyser) Analyse() {
 	for an.here = 0; an.here < len(an.text); an.here += adv {
 		var style string
 		if style, adv = an.LookFor(an.Style.CommentBegin); adv > 0 {
-			fmt.Println("New comment: " + style)
+			fmt.Println("New comment: " + style, an)
+			an.NewComment(style)
+			an.lastBranch = an.here
 		} else if style, adv = an.LookFor(an.Style.Quote); adv > 0 {
 			fmt.Println("Quote: " + style)
+			an.lastBranch = an.here
 		} else if spaces, adv = an.LookForSpaces(); adv > 0 {
 			fmt.Println("Spaces: ", adv, spaces)
+			an.Spaces(spaces)
+			an.lastBranch = an.here
 		} else if style, adv = an.LookFor(an.Style.StmtContinue); adv > 0 {
 			fmt.Println("StmtContinue: " + style)
+			an.lastBranch = an.here
 		} else if style, adv = an.LookFor(an.Style.StmtEnd); adv > 0 {
 			fmt.Println("StmtEnd: " + style)
+			an.lastBranch = an.here
 		} else if style, adv = an.LookFor(an.Style.SectBeginPrefix); adv > 0 {
 			fmt.Println("SectBeginPrefix: " + style)
+			an.lastBranch = an.here
 		} else if style, adv = an.LookFor(an.Style.SectBeginSuffix); adv > 0 {
 			fmt.Println("SectBeginSuffix: " + style)
+			an.lastBranch = an.here
 		} else if style, adv = an.LookFor(an.Style.SectEndPrefix); adv > 0 {
 			fmt.Println("SectEndPrefix: " + style)
+			an.lastBranch = an.here
 		} else if style, adv = an.LookFor(an.Style.SectEndSuffix); adv > 0 {
 			fmt.Println("SectEndSuffix: " + style)
+			an.lastBranch = an.here
 		} else {
 			adv = 1
 		}

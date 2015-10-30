@@ -60,8 +60,12 @@ type Analyser struct {
 	Root *DocNode
 
 	text string
-	here int
+	lastBranch, here int
 	this *DocNode
+
+	valCtx *Val
+	commentCtx *Comment
+	stmtCtx *Stmt
 }
 
 func NewAnalyser(style *AnalyserStyle, input string) (ret *Analyser ){
@@ -95,4 +99,69 @@ func Print(root *DocNode) {
 	for _, leaf := range root.Leaves {
 		Print(leaf)
 	}
+}
+
+func (an *Analyser) NewLeaf() {
+	if parent := an.this.Parent ; parent== nil {
+		// this is root
+		newLeaf := &DocNode{Parent:an.Root, Leaves: make([]*DocNode, 0, 8)}
+		an.this.Leaves = append(an.this.Leaves, newLeaf)
+		an.this = newLeaf
+	} else {
+		newLeaf := &DocNode{Parent: parent, Leaves:make([]*DocNode, 0, 8)}
+		parent.Leaves = append(parent.Leaves, newLeaf)
+		an.this = newLeaf
+	}
+}
+
+func (an *Analyser) NewStmt() {
+	an.NewLeaf()
+	an.this.Obj = &Stmt{Indent:"", Pieces:make([]interface{}, 0, 8), End: ""}
+}
+
+func (an *Analyser) EndVal() {
+	if an.valCtx  == nil {
+		fmt.Println("Ending a val without starting one")
+		return
+	}
+	if an.stmtCtx == nil {
+		fmt.Println("Ending a val with a new stmt")
+		an.NewStmt()
+	}
+	an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.valCtx)
+}
+
+func (an *Analyser) StoreContent() {
+	if an.here - an.lastBranch > 1 {
+		missedContent := an.text[an.lastBranch:an.here]
+		if an.commentCtx != nil {
+			an.commentCtx.Content += missedContent
+		} else if an.valCtx != nil{
+			an.valCtx.Text += missedContent
+		} else {
+			fmt.Println("There is text nowhere to go: ", missedContent)
+		}
+	}
+}
+
+func (an *Analyser) Spaces(spaces string) {
+	an.StoreContent()
+	if an.commentCtx != nil {
+		an.commentCtx.Content += spaces
+	} else if an.valCtx != nil {
+		an.valCtx.TrailingSpaces = spaces
+		an.EndVal()
+	} else if an.stmtCtx != nil{
+		an.stmtCtx.Indent += spaces
+	} else {
+		fmt.Println("Dunno what to do with spaces")
+	}
+}
+
+func (an *Analyser) EnterCommentCtx() {
+}
+
+func (an *Analyser) NewComment(style string) {
+	an.EnterCommentCtx()
+	an.commentCtx.CommentStyle = style
 }
