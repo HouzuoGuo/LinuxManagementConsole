@@ -1,9 +1,7 @@
 package txtedit
 import "testing"
 
-var input = `
-# this is comment
-abc 123
+var input = `abc def #ghi
 `
 
 func TestAnalyser(t *testing.T) {

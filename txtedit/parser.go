@@ -3,7 +3,7 @@ import "fmt"
 
 func (an *Analyser) LookFor(match []string) (string, int) {
 	for _, style := range match {
-		if an.here + len(match) >= len(an.text) {
+		if an.here + len(match) > len(an.text) {
 			continue
 		} else if string(an.text[an.here:an.here + len(match)]) != style {
 			continue
@@ -30,7 +30,7 @@ func (an *Analyser) Analyse() {
 	for an.here = 0; an.here < len(an.text); an.here += adv {
 		var style string
 		if style, adv = an.LookFor(an.Style.CommentBegin); adv > 0 {
-			fmt.Println("New comment: " + style, an)
+			fmt.Println("Comment: " + style)
 			an.NewComment(style)
 			an.lastBranch = an.here
 		} else if style, adv = an.LookFor(an.Style.Quote); adv > 0 {
@@ -38,13 +38,14 @@ func (an *Analyser) Analyse() {
 			an.lastBranch = an.here
 		} else if spaces, adv = an.LookForSpaces(); adv > 0 {
 			fmt.Println("Spaces: ", adv, spaces)
-			an.Spaces(spaces)
-			an.lastBranch = an.here
+			an.storeSpaces(spaces)
+			an.lastBranch = an.here + adv
 		} else if style, adv = an.LookFor(an.Style.StmtContinue); adv > 0 {
 			fmt.Println("StmtContinue: " + style)
 			an.lastBranch = an.here
 		} else if style, adv = an.LookFor(an.Style.StmtEnd); adv > 0 {
 			fmt.Println("StmtEnd: " + style)
+			an.EndStmt()
 			an.lastBranch = an.here
 		} else if style, adv = an.LookFor(an.Style.SectBeginPrefix); adv > 0 {
 			fmt.Println("SectBeginPrefix: " + style)
@@ -59,7 +60,9 @@ func (an *Analyser) Analyse() {
 			fmt.Println("SectEndSuffix: " + style)
 			an.lastBranch = an.here
 		} else {
+			fmt.Println("text '" + string(an.text[an.here]) + "' does not match any condition")
 			adv = 1
 		}
 	}
+	an.EndStmt()
 }

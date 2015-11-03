@@ -4,71 +4,95 @@ import (
 	"strings"
 )
 
+type DebugPrint interface{
+	Debug() string
+}
+
 type Val struct {
-	QuoteStyle string
-	Text string
+	QuoteStyle     string
+	Text           string
 	TrailingSpaces string
+}
+
+func (val *Val) Debug() string {
+	return fmt.Sprintf("q%s '%s%s'", val.QuoteStyle, val.Text, val.TrailingSpaces)
 }
 
 type Comment struct {
 	CommentStyle string
-	Content string
+	Content      string
+}
+
+func (comment *Comment) Debug() string {
+	return fmt.Sprintf("c%s '%s'", comment.CommentStyle, comment.Content)
 }
 
 type StmtContinue struct {
 	Style string
 }
 
+func (cont *StmtContinue) Debug() string {
+	return fmt.Sprintf("continue '%s'", cont.Style)
+}
+
 type Stmt struct {
 	Indent string
 	// Value or Comment or StmtContinue
 	Pieces []interface{}
-	End string
+	End    string
+}
+
+func (stmt *Stmt) Debug() string {
+	var out string
+	for _, piece := range stmt.Pieces {
+		out += "[" + piece.(DebugPrint).Debug() + "]"
+	}
+	return fmt.Sprintf("s'%s' %s e%v", stmt.Indent, out, []byte(stmt.End))
 }
 
 type Sect struct {
-	Begin *Stmt
+	Begin                    *Stmt
 	BeginPrefix, BeginSuffix string
-	EndPrefix, EndSuffix string
+	EndPrefix, EndSuffix     string
 	// Stmt or Sect
-	Pieces []interface{}
-	End *Stmt
+	Pieces                   []interface{}
+	End                      *Stmt
 }
 
 type DocNode struct {
 	Parent *DocNode
 	// Stmt or Sect
-	Obj interface{}
+	Obj    interface{}
 	Leaves []*DocNode
 }
 
 type AnalyserStyle struct {
-	StmtContinue []string
-	StmtEnd []string
-	CommentBegin []string
-	Quote []string
+	StmtContinue                       []string
+	StmtEnd                            []string
+	CommentBegin                       []string
+	Quote                              []string
 	BeginSectWithStmt, EndSectWithStmt bool
 
-	SectBeginPrefix []string
-	SectBeginSuffix []string
-	SectEndPrefix []string
-	SectEndSuffix []string
+	SectBeginPrefix                    []string
+	SectBeginSuffix                    []string
+	SectEndPrefix                      []string
+	SectEndSuffix                      []string
 }
 
 type Analyser struct {
-	Style *AnalyserStyle
-	Root *DocNode
+	Style            *AnalyserStyle
+	Root             *DocNode
 
-	text string
+	text             string
 	lastBranch, here int
-	this *DocNode
+	this             *DocNode
 
-	valCtx *Val
-	commentCtx *Comment
-	stmtCtx *Stmt
+	valCtx           *Val
+	commentCtx       *Comment
+	stmtCtx          *Stmt
 }
 
-func NewAnalyser(style *AnalyserStyle, input string) (ret *Analyser ){
+func NewAnalyser(style *AnalyserStyle, input string) (ret *Analyser) {
 	ret = &Analyser{Style: style, text: input}
 	ret.this = &DocNode{Parent: nil, Obj: nil, Leaves:make([]*DocNode, 0, 8)}
 	ret.Root = ret.this
@@ -81,7 +105,12 @@ func DebugNode(node *DocNode, indent int) {
 		fmt.Println(prefix + "(nil)")
 		return
 	}
-	fmt.Print(prefix + "Node - ", node.Obj)
+	if node.Obj == nil {
+		fmt.Print(prefix + "Node - nil")
+	} else {
+		fmt.Print(prefix + "Node - ", node.Obj.(DebugPrint).Debug())
+	}
+
 	if len(node.Leaves) > 0 {
 		fmt.Println(" -->")
 		for _, leaf := range node.Leaves {
@@ -94,15 +123,18 @@ func DebugNode(node *DocNode, indent int) {
 
 
 func Print(root *DocNode) {
-	fmt.Println(root.Obj)
+	fmt.Println(root.Obj.(DebugPrint).Debug())
 	fmt.Println("-->")
 	for _, leaf := range root.Leaves {
 		Print(leaf)
 	}
 }
 
-func (an *Analyser) NewLeaf() {
-	if parent := an.this.Parent ; parent== nil {
+func (an *Analyser) newSiblingIfNotNil() {
+	if an.this.Obj == nil {
+		return
+	}
+	if parent := an.this.Parent; parent == nil {
 		// this is root
 		newLeaf := &DocNode{Parent:an.Root, Leaves: make([]*DocNode, 0, 8)}
 		an.this.Leaves = append(an.this.Leaves, newLeaf)
@@ -114,54 +146,121 @@ func (an *Analyser) NewLeaf() {
 	}
 }
 
-func (an *Analyser) NewStmt() {
-	an.NewLeaf()
-	an.this.Obj = &Stmt{Indent:"", Pieces:make([]interface{}, 0, 8), End: ""}
+func (an *Analyser) newLeafIfNotNil() {
+	if an.this.Obj == nil {
+		return
+	}
+	newLeaf := &DocNode{Parent: an.this, Leaves: make([]*DocNode, 0, 8)}
+	an.this.Leaves = append(an.this.Leaves, newLeaf)
+	an.this = newLeaf
+}
+
+func (an *Analyser) NewComment(style string) {
+	if an.commentCtx == nil {
+		an.commentCtx = new(Comment)
+		an.commentCtx.CommentStyle = style
+	}
+}
+
+func (an *Analyser) EnterComment(style string) {
+	if an.commentCtx == nil {
+		an.NewComment(style)
+	} else {
+		return
+	}
+}
+
+func (an *Analyser) EndComment() {
+	if an.commentCtx == nil {
+		return
+	} else {
+		an.storeContent()
+		an.EnterStmt()
+		an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.commentCtx)
+	}
+	an.commentCtx = nil
+}
+
+func (an *Analyser) NewVal() {
+	if an.valCtx == nil {
+		an.valCtx = new(Val)
+	}
+}
+
+func (an *Analyser) EnterVal() {
+	if an.valCtx == nil {
+		an.NewVal()
+	} else {
+		return
+	}
 }
 
 func (an *Analyser) EndVal() {
-	if an.valCtx  == nil {
-		fmt.Println("Ending a val without starting one")
+	if an.valCtx == nil {
 		return
+	} else {
+		an.storeContent()
+		an.EnterStmt()
+		an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.valCtx)
 	}
-	if an.stmtCtx == nil {
-		fmt.Println("Ending a val with a new stmt")
-		an.NewStmt()
-	}
-	an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.valCtx)
+	an.valCtx = nil
 }
 
-func (an *Analyser) StoreContent() {
+func (an *Analyser) NewStmt() {
+	if an.stmtCtx == nil {
+		an.newSiblingIfNotNil()
+		an.stmtCtx = new(Stmt)
+		an.this.Obj = an.stmtCtx
+	}
+}
+
+func (an *Analyser) EnterStmt() {
+	if an.stmtCtx == nil {
+		an.NewStmt()
+	} else {
+		return
+	}
+}
+
+func (an *Analyser) EndStmt() {
+	an.EndComment()
+	an.EndVal()
+	if an.stmtCtx == nil {
+		return
+	} else {
+		an.storeContent()
+		an.this.Obj = an.stmtCtx
+		an.newSiblingIfNotNil()
+	}
+	an.stmtCtx = nil
+}
+
+func (an *Analyser) storeContent() {
 	if an.here - an.lastBranch > 1 {
+		fmt.Println("here", an.here, "last branch", an.lastBranch)
 		missedContent := an.text[an.lastBranch:an.here]
 		if an.commentCtx != nil {
+			fmt.Println("stored '" + missedContent + "' in comment")
 			an.commentCtx.Content += missedContent
-		} else if an.valCtx != nil{
-			an.valCtx.Text += missedContent
 		} else {
-			fmt.Println("There is text nowhere to go: ", missedContent)
+			an.EnterVal()
+			fmt.Println("stored '" + missedContent + "' in val")
+			an.valCtx.Text += missedContent
 		}
 	}
 }
-
-func (an *Analyser) Spaces(spaces string) {
-	an.StoreContent()
+func (an *Analyser) storeSpaces(spaces string) {
+	an.storeContent()
+	fmt.Println("About to store space '" +spaces + "'")
 	if an.commentCtx != nil {
 		an.commentCtx.Content += spaces
 	} else if an.valCtx != nil {
 		an.valCtx.TrailingSpaces = spaces
 		an.EndVal()
-	} else if an.stmtCtx != nil{
+	} else if an.stmtCtx == nil{
+		an.EnterStmt()
 		an.stmtCtx.Indent += spaces
 	} else {
-		fmt.Println("Dunno what to do with spaces")
+		fmt.Println("Spaces have no where to go")
 	}
-}
-
-func (an *Analyser) EnterCommentCtx() {
-}
-
-func (an *Analyser) NewComment(style string) {
-	an.EnterCommentCtx()
-	an.commentCtx.CommentStyle = style
 }
