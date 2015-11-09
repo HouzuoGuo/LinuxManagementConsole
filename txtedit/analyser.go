@@ -15,7 +15,7 @@ type Val struct {
 }
 
 func (val *Val) Debug() string {
-	return fmt.Sprintf("q%s '%s%s'", val.QuoteStyle, val.Text, val.TrailingSpaces)
+	return fmt.Sprintf("q%s %s%s", val.QuoteStyle, val.Text, val.TrailingSpaces)
 }
 
 type Comment struct {
@@ -24,7 +24,7 @@ type Comment struct {
 }
 
 func (comment *Comment) Debug() string {
-	return fmt.Sprintf("c%s '%s'", comment.CommentStyle, comment.Content)
+	return fmt.Sprintf("c%s %s", comment.CommentStyle, comment.Content)
 }
 
 type StmtContinue struct {
