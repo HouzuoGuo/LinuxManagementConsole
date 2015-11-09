@@ -2,10 +2,10 @@ package txtedit
 import "testing"
 
 var input = `
-first line # with some comment
-	indent test
-    second line
-back to 0
+first 0
+    indent 1
+    second 2
+back 3
 `
 
 func TestAnalyser(t *testing.T) {

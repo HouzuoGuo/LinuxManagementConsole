@@ -135,9 +135,13 @@ func (an *Analyser) newSiblingIfNotNil() {
 		return
 	}
 	if parent := an.this.Parent; parent == nil {
-		// this is root
+		// root carries nothing
+		// create a leaf that was the root
+		rootAsLeaf := an.Root
+		an.Root = &DocNode{Parent: nil, Leaves:make([]*DocNode, 0, 8)}
+		an.Root.Leaves = append(an.Root.Leaves, rootAsLeaf)
 		newLeaf := &DocNode{Parent:an.Root, Leaves: make([]*DocNode, 0, 8)}
-		an.this.Leaves = append(an.this.Leaves, newLeaf)
+		an.Root.Leaves = append(an.Root.Leaves, newLeaf)
 		an.this = newLeaf
 	} else {
 		newLeaf := &DocNode{Parent: parent, Leaves:make([]*DocNode, 0, 8)}
@@ -243,11 +247,13 @@ func (an *Analyser) EndStmt() {
 }
 
 func (an *Analyser) storeContent() {
-	if an.here - an.lastBranch > 1 {
+	if an.here - an.lastBranch > 0 {
 		missedContent := an.text[an.lastBranch:an.here]
 		if an.commentCtx != nil {
+			fmt.Println("missed content ", missedContent ,"will be stored in comment")
 			an.commentCtx.Content += missedContent
 		} else {
+			fmt.Println("missed content ", missedContent, " will be stored in val")
 			an.EnterVal()
 			an.valCtx.Text += missedContent
 		}
