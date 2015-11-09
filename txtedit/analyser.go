@@ -174,6 +174,7 @@ func (an *Analyser) EndComment() {
 	if an.commentCtx == nil {
 		return
 	} else {
+		fmt.Println("endcomment will store content")
 		an.storeContent()
 		an.EnterStmt()
 		an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.commentCtx)
@@ -199,6 +200,7 @@ func (an *Analyser) EndVal() {
 	if an.valCtx == nil {
 		return
 	} else {
+		fmt.Println("endval will store content")
 		an.storeContent()
 		an.EnterStmt()
 		an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.valCtx)
@@ -207,6 +209,7 @@ func (an *Analyser) EndVal() {
 }
 
 func (an *Analyser) NewStmt() {
+	fmt.Println("newstmt called")
 	if an.stmtCtx == nil {
 		an.newSiblingIfNotNil()
 		an.stmtCtx = new(Stmt)
@@ -215,14 +218,17 @@ func (an *Analyser) NewStmt() {
 }
 
 func (an *Analyser) EnterStmt() {
+	fmt.Println("enterstmt called")
 	if an.stmtCtx == nil {
 		an.NewStmt()
 	} else {
+		fmt.Println("enterstmt will do nothing")
 		return
 	}
 }
 
 func (an *Analyser) EndStmt() {
+	an.storeContent()
 	an.EndComment()
 	an.EndVal()
 	if an.stmtCtx == nil {
@@ -232,21 +238,20 @@ func (an *Analyser) EndStmt() {
 		an.this.Obj = an.stmtCtx
 		an.newSiblingIfNotNil()
 	}
+	fmt.Println("endstmt will set to nil")
 	an.stmtCtx = nil
 }
 
 func (an *Analyser) storeContent() {
 	if an.here - an.lastBranch > 1 {
-		fmt.Println("here", an.here, "last branch", an.lastBranch)
 		missedContent := an.text[an.lastBranch:an.here]
 		if an.commentCtx != nil {
-			fmt.Println("stored '" + missedContent + "' in comment")
 			an.commentCtx.Content += missedContent
 		} else {
 			an.EnterVal()
-			fmt.Println("stored '" + missedContent + "' in val")
 			an.valCtx.Text += missedContent
 		}
+		an.lastBranch = an.here
 	}
 }
 func (an *Analyser) storeSpaces(spaces string) {
@@ -257,7 +262,11 @@ func (an *Analyser) storeSpaces(spaces string) {
 	} else if an.valCtx != nil {
 		an.valCtx.TrailingSpaces = spaces
 		an.EndVal()
+	} else if an.stmtCtx != nil {
+		fmt.Println("store space going to set indent")
+		an.stmtCtx.Indent += spaces
 	} else if an.stmtCtx == nil{
+		fmt.Println("store space going to enter stmt")
 		an.EnterStmt()
 		an.stmtCtx.Indent += spaces
 	} else {

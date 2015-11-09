@@ -1,7 +1,11 @@
 package txtedit
 import "testing"
 
-var input = `abc def #ghi
+var input = `
+first line # with some comment
+	indent test
+    second line
+back to 0
 `
 
 func TestAnalyser(t *testing.T) {
