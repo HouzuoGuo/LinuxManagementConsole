@@ -1,10 +1,11 @@
 package txtedit
+
 import (
 	"fmt"
 	"strings"
 )
 
-type DebugPrint interface{
+type DebugPrint interface {
 	Debug() string
 }
 
@@ -55,8 +56,8 @@ type Sect struct {
 	BeginPrefix, BeginSuffix string
 	EndPrefix, EndSuffix     string
 	// Stmt or Sect
-	Pieces                   []interface{}
-	End                      *Stmt
+	Pieces []interface{}
+	End    *Stmt
 }
 
 type DocNode struct {
@@ -73,28 +74,29 @@ type AnalyserStyle struct {
 	Quote                              []string
 	BeginSectWithStmt, EndSectWithStmt bool
 
-	SectBeginPrefix                    []string
-	SectBeginSuffix                    []string
-	SectEndPrefix                      []string
-	SectEndSuffix                      []string
+	SectBeginPrefix []string
+	SectBeginSuffix []string
+	SectEndPrefix   []string
+	SectEndSuffix   []string
 }
 
 type Analyser struct {
-	Style            *AnalyserStyle
-	Root             *DocNode
+	Style *AnalyserStyle
+	Root  *DocNode
 
 	text             string
 	lastBranch, here int
 	this             *DocNode
+	ignoreNewStmtOnce bool
 
-	valCtx           *Val
-	commentCtx       *Comment
-	stmtCtx          *Stmt
+	valCtx     *Val
+	commentCtx *Comment
+	stmtCtx    *Stmt
 }
 
 func NewAnalyser(style *AnalyserStyle, input string) (ret *Analyser) {
 	ret = &Analyser{Style: style, text: input}
-	ret.this = &DocNode{Parent: nil, Obj: nil, Leaves:make([]*DocNode, 0, 8)}
+	ret.this = &DocNode{Parent: nil, Obj: nil, Leaves: make([]*DocNode, 0, 8)}
 	ret.Root = ret.this
 	return
 }
@@ -108,19 +110,18 @@ func DebugNode(node *DocNode, indent int) {
 	if node.Obj == nil {
 		fmt.Print(prefix + "Node - nil")
 	} else {
-		fmt.Print(prefix + "Node - ", node.Obj.(DebugPrint).Debug())
+		fmt.Print(prefix+"Node - ", node.Obj.(DebugPrint).Debug())
 	}
 
 	if len(node.Leaves) > 0 {
 		fmt.Println(" -->")
 		for _, leaf := range node.Leaves {
-			DebugNode(leaf, indent + 2)
+			DebugNode(leaf, indent+2)
 		}
 	} else {
 		fmt.Println()
 	}
 }
-
 
 func Print(root *DocNode) {
 	fmt.Println(root.Obj.(DebugPrint).Debug())
@@ -138,13 +139,13 @@ func (an *Analyser) newSiblingIfNotNil() {
 		// root carries nothing
 		// create a leaf that was the root
 		rootAsLeaf := an.Root
-		an.Root = &DocNode{Parent: nil, Leaves:make([]*DocNode, 0, 8)}
+		an.Root = &DocNode{Parent: nil, Leaves: make([]*DocNode, 0, 8)}
 		an.Root.Leaves = append(an.Root.Leaves, rootAsLeaf)
-		newLeaf := &DocNode{Parent:an.Root, Leaves: make([]*DocNode, 0, 8)}
+		newLeaf := &DocNode{Parent: an.Root, Leaves: make([]*DocNode, 0, 8)}
 		an.Root.Leaves = append(an.Root.Leaves, newLeaf)
 		an.this = newLeaf
 	} else {
-		newLeaf := &DocNode{Parent: parent, Leaves:make([]*DocNode, 0, 8)}
+		newLeaf := &DocNode{Parent: parent, Leaves: make([]*DocNode, 0, 8)}
 		parent.Leaves = append(parent.Leaves, newLeaf)
 		an.this = newLeaf
 	}
@@ -232,9 +233,12 @@ func (an *Analyser) EnterStmt() {
 }
 
 func (an *Analyser) EndStmt() {
-	an.storeContent()
 	an.EndComment()
 	an.EndVal()
+	if an.ignoreNewStmtOnce {
+		an.ignoreNewStmtOnce = false
+		return
+	}
 	if an.stmtCtx == nil {
 		return
 	} else {
@@ -242,15 +246,14 @@ func (an *Analyser) EndStmt() {
 		an.this.Obj = an.stmtCtx
 		an.newSiblingIfNotNil()
 	}
-	fmt.Println("endstmt will set to nil")
 	an.stmtCtx = nil
 }
 
 func (an *Analyser) storeContent() {
-	if an.here - an.lastBranch > 0 {
+	if an.here-an.lastBranch > 0 {
 		missedContent := an.text[an.lastBranch:an.here]
 		if an.commentCtx != nil {
-			fmt.Println("missed content ", missedContent ,"will be stored in comment")
+			fmt.Println("missed content ", missedContent, "will be stored in comment")
 			an.commentCtx.Content += missedContent
 		} else {
 			fmt.Println("missed content ", missedContent, " will be stored in val")
@@ -262,8 +265,14 @@ func (an *Analyser) storeContent() {
 }
 func (an *Analyser) storeSpaces(spaces string) {
 	an.storeContent()
-	fmt.Println("About to store space '" +spaces + "'")
-	if an.commentCtx != nil {
+	fmt.Println("About to store space '" + spaces + "'")
+	if an.ignoreNewStmtOnce {
+		fmt.Println("spaces are going to new val")
+		an.EndVal()
+		an.NewVal()
+		an.valCtx.TrailingSpaces += spaces
+		an.EndVal()
+	} else if an.commentCtx != nil {
 		an.commentCtx.Content += spaces
 	} else if an.valCtx != nil {
 		an.valCtx.TrailingSpaces = spaces
@@ -271,11 +280,20 @@ func (an *Analyser) storeSpaces(spaces string) {
 	} else if an.stmtCtx != nil {
 		fmt.Println("store space going to set indent")
 		an.stmtCtx.Indent += spaces
-	} else if an.stmtCtx == nil{
+	} else if an.stmtCtx == nil {
 		fmt.Println("store space going to enter stmt")
 		an.EnterStmt()
 		an.stmtCtx.Indent += spaces
 	} else {
 		fmt.Println("Spaces have no where to go")
 	}
+}
+
+func (an *Analyser) ContinueStmt(style string) {
+	an.storeContent()
+	an.EndComment()
+	an.EndVal()
+	an.EnterStmt()
+	an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, &StmtContinue{Style:style})
+	an.ignoreNewStmtOnce = true
 }

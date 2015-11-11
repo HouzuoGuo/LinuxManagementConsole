@@ -1,6 +1,6 @@
 package txtedit
 
-var EVERYTHING_CONF string =`
+var EVERYTHING_CONF string = `
 # ====== ntpd ======
 restrict 127.0.0.1
 discard average 3 minimum 1
