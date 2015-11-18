@@ -66,7 +66,7 @@ func (an *Analyser) Analyse() {
 		var style string
 		if style, adv = an.LookFor(an.Style.CommentBegin); adv > 0 {
 			fmt.Println("Comment: " + style)
-			an.NewComment(style)
+			an.BeginComment(style)
 			an.lastBranch = an.here + adv
 		} else if style, adv = an.LookFor(an.Style.Quote); adv > 0 {
 			fmt.Println("Quote: " + style)
@@ -86,15 +86,19 @@ func (an *Analyser) Analyse() {
 			an.lastBranch = an.here + adv
 		} else if style, adv = an.LookFor(an.Style.SectBeginPrefix); adv > 0 {
 			fmt.Println("SectBeginPrefix: " + style)
+			an.BeginSectionSetPrefix(style)
 			an.lastBranch = an.here + adv
 		} else if style, adv = an.LookFor(an.Style.SectBeginSuffix); adv > 0 {
 			fmt.Println("SectBeginSuffix: " + style)
+			an.BeginSectionSetSuffix(style)
 			an.lastBranch = an.here + adv
 		} else if style, adv = an.LookFor(an.Style.SectEndPrefix); adv > 0 {
 			fmt.Println("SectEndPrefix: " + style)
+			an.EndSectionSetPrefix(style)
 			an.lastBranch = an.here + adv
 		} else if style, adv = an.LookFor(an.Style.SectEndSuffix); adv > 0 {
 			fmt.Println("SectEndSuffix: " + style)
+			an.EndSectionSetSuffix(style)
 			an.lastBranch = an.here + adv
 		} else {
 			fmt.Println("text '" + string(an.text[an.here]) + "' does not match any condition")

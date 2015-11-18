@@ -55,9 +55,22 @@ type Sect struct {
 	Begin                    *Stmt
 	BeginPrefix, BeginSuffix string
 	EndPrefix, EndSuffix     string
-	// Stmt or Sect
-	Pieces []interface{}
-	End    *Stmt
+	// Pieces inside section are DocNodes
+	End                      *Stmt
+}
+
+func (sect *Sect) Debug() string {
+	beginStmtStr := ""
+	if sect.Begin != nil {
+		beginStmtStr = sect.Begin.Debug()
+	}
+	endStmtStr := ""
+	if sect.End != nil {
+		endStmtStr = sect.End.Debug()
+	}
+	return fmt.Sprintf("Section %s %s %s, ends with %s %s %s",
+		sect.BeginPrefix, beginStmtStr, sect.BeginSuffix,
+	sect.EndPrefix, endStmtStr, sect.EndSuffix)
 }
 
 type DocNode struct {
@@ -74,24 +87,24 @@ type AnalyserStyle struct {
 	Quote                              []string
 	BeginSectWithStmt, EndSectWithStmt bool
 
-	SectBeginPrefix []string
-	SectBeginSuffix []string
-	SectEndPrefix   []string
-	SectEndSuffix   []string
+	SectBeginPrefix                    []string
+	SectBeginSuffix                    []string
+	SectEndPrefix                      []string
+	SectEndSuffix                      []string
 }
 
 type Analyser struct {
-	Style *AnalyserStyle
-	Root  *DocNode
+	Style             *AnalyserStyle
+	Root              *DocNode
 
-	text             string
-	lastBranch, here int
-	this             *DocNode
+	text              string
+	lastBranch, here  int
+	this              *DocNode
 	ignoreNewStmtOnce bool
 
-	valCtx     *Val
-	commentCtx *Comment
-	stmtCtx    *Stmt
+	valCtx            *Val
+	commentCtx        *Comment
+	stmtCtx           *Stmt
 }
 
 func NewAnalyser(style *AnalyserStyle, input string) (ret *Analyser) {
@@ -110,13 +123,13 @@ func DebugNode(node *DocNode, indent int) {
 	if node.Obj == nil {
 		fmt.Print(prefix + "Node - nil")
 	} else {
-		fmt.Print(prefix+"Node - ", node.Obj.(DebugPrint).Debug())
+		fmt.Print(prefix + "Node - ", node.Obj.(DebugPrint).Debug())
 	}
 
 	if len(node.Leaves) > 0 {
 		fmt.Println(" -->")
 		for _, leaf := range node.Leaves {
-			DebugNode(leaf, indent+2)
+			DebugNode(leaf, indent + 2)
 		}
 	} else {
 		fmt.Println()
@@ -151,7 +164,7 @@ func (an *Analyser) newSiblingIfNotNil() {
 	}
 }
 
-func (an *Analyser) newLeafIfNotNil() {
+func (an *Analyser) newLeaf() {
 	if an.this.Obj == nil {
 		return
 	}
@@ -160,7 +173,7 @@ func (an *Analyser) newLeafIfNotNil() {
 	an.this = newLeaf
 }
 
-func (an *Analyser) NewComment(style string) {
+func (an *Analyser) BeginComment(style string) {
 	if an.commentCtx == nil {
 		an.commentCtx = new(Comment)
 		an.commentCtx.CommentStyle = style
@@ -169,7 +182,7 @@ func (an *Analyser) NewComment(style string) {
 
 func (an *Analyser) EnterComment(style string) {
 	if an.commentCtx == nil {
-		an.NewComment(style)
+		an.BeginComment(style)
 	} else {
 		return
 	}
@@ -250,7 +263,7 @@ func (an *Analyser) EndStmt() {
 }
 
 func (an *Analyser) storeContent() {
-	if an.here-an.lastBranch > 0 {
+	if an.here - an.lastBranch > 0 {
 		missedContent := an.text[an.lastBranch:an.here]
 		if an.commentCtx != nil {
 			fmt.Println("missed content ", missedContent, "will be stored in comment")
@@ -290,10 +303,74 @@ func (an *Analyser) storeSpaces(spaces string) {
 }
 
 func (an *Analyser) ContinueStmt(style string) {
+	if an.valCtx != nil && an.valCtx.QuoteStyle != "" {
+		an.valCtx.Text += style
+		return
+	}
 	an.storeContent()
 	an.EndComment()
 	an.EndVal()
 	an.EnterStmt()
 	an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, &StmtContinue{Style:style})
 	an.ignoreNewStmtOnce = true
+}
+
+func (an *Analyser) NewSection() {
+	if an.this.Obj == nil {
+		an.EndStmt()
+		an.this.Obj = new(Sect)
+	}else if _, isSect := an.this.Obj.(*Sect); !isSect {
+		an.EndStmt()
+		an.newLeaf()
+		an.this.Obj = new(Sect)
+	}
+}
+
+func (an *Analyser) EnterSect() {
+	an.NewSection()
+}
+
+func (an *Analyser) IsSect() bool {
+	if an.this.Obj == nil {
+		return false
+	} else if _, isSect := an.this.Obj.(*Sect); isSect {
+		return true
+	} else {
+		return false
+	}
+}
+
+func (an *Analyser) EndSection() {
+	an.this = an.this.Parent
+}
+
+func (an *Analyser) BeginSectionSetPrefix(style string) {
+	an.EnterSect()
+	an.this.Obj.(*Sect).BeginPrefix = style
+}
+func (an *Analyser) BeginSectionSetSuffix(style string) {
+	if an.IsSect() {
+		an.this.Obj.(*Sect).BeginSuffix = style
+	} else {
+		an.storeContent()
+	}
+}
+func (an *Analyser) EndSectionSetPrefix(style string) {
+	if an.IsSect() {
+		an.this.Obj.(*Sect).EndPrefix = style
+		if len(an.Style.SectEndSuffix) == 0 {
+			an.EndSection()
+		}
+	} else {
+		an.storeContent()
+	}
+
+}
+func (an *Analyser) EndSectionSetSuffix(style string) {
+	if an.IsSect() {
+		an.this.Obj.(*Sect).EndSuffix = style
+		an.EndSection()
+	} else {
+		an.storeContent()
+	}
 }

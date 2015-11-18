@@ -2,7 +2,11 @@ package txtedit
 
 import "testing"
 
-var input = "here 123 \\   \n\n  there"
+var input = `
+<SA>
+	Abc
+</SA>
+`
 
 func TestAnalyser(t *testing.T) {
 	an := NewAnalyser(&AnalyserStyle{
@@ -10,6 +14,10 @@ func TestAnalyser(t *testing.T) {
 		StmtEnd:           []string{"\n"},
 		CommentBegin:      []string{"#"},
 		Quote:             []string{"\"", "'"},
+		SectBeginPrefix: []string{"<"},
+		SectBeginSuffix:[]string{">"},
+		SectEndPrefix: []string{"</"},
+		SectEndSuffix:[]string{">"},
 		BeginSectWithStmt: true,
 		EndSectWithStmt:   true},
 		input)
