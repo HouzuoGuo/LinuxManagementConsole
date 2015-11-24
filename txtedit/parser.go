@@ -60,6 +60,7 @@ func (an *Analyser) SetQuote(style string) {
 }
 
 func (an *Analyser) Analyse() {
+
 	var adv int
 	var spaces string
 	for an.here = 0; an.here < len(an.text); an.here += adv {

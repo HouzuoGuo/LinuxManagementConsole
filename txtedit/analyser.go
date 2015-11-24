@@ -70,7 +70,7 @@ func (sect *Sect) Debug() string {
 	}
 	return fmt.Sprintf("Section %s %s %s, ends with %s %s %s",
 		sect.BeginPrefix, beginStmtStr, sect.BeginSuffix,
-	sect.EndPrefix, endStmtStr, sect.EndSuffix)
+		sect.EndPrefix, endStmtStr, sect.EndSuffix)
 }
 
 type DocNode struct {
@@ -79,6 +79,15 @@ type DocNode struct {
 	Obj    interface{}
 	Leaves []*DocNode
 }
+
+const (
+	SECT_MATCH_BEGIN_PREFIX = 0
+	SECT_MATCH_BEGIN_PREFIX_SUFFIX = 1
+	SECT_MATCH_BEGIN_PREFIX_END_PREFIX = 2
+	SECT_MATCH_ALL = 3
+)
+
+type SectionMatchStyle int
 
 type AnalyserStyle struct {
 	StmtContinue                       []string
@@ -91,6 +100,20 @@ type AnalyserStyle struct {
 	SectBeginSuffix                    []string
 	SectEndPrefix                      []string
 	SectEndSuffix                      []string
+
+	SectMatchStyle                     SectionMatchStyle
+}
+
+func (style *AnalyserStyle) SetMatchStyle() {
+	if len(style.SectEndSuffix) > 0 && len(style.SectEndPrefix) > 0 {
+		style.SectMatchStyle = SECT_MATCH_ALL
+	}else if len(style.SectEndPrefix) > 0 && len(style.SectBeginPrefix) > 0 {
+		style.SectMatchStyle = SECT_MATCH_BEGIN_PREFIX_END_PREFIX
+	}else if len(style.SectBeginSuffix) > 0 && len(style.SectBeginPrefix) > 0 {
+		style.SectMatchStyle = SECT_MATCH_BEGIN_PREFIX_SUFFIX
+	}else {
+		style.SectMatchStyle = SECT_MATCH_BEGIN_PREFIX
+	}
 }
 
 type Analyser struct {
@@ -111,6 +134,7 @@ func NewAnalyser(style *AnalyserStyle, input string) (ret *Analyser) {
 	ret = &Analyser{Style: style, text: input}
 	ret.this = &DocNode{Parent: nil, Obj: nil, Leaves: make([]*DocNode, 0, 8)}
 	ret.Root = ret.this
+	ret.Style.SetMatchStyle()
 	return
 }
 
@@ -342,35 +366,108 @@ func (an *Analyser) IsSect() bool {
 
 func (an *Analyser) EndSection() {
 	an.this = an.this.Parent
+	fmt.Println("section ends here")
+}
+
+const (
+	SECT_STATE_NONE = 0
+	SECT_STATE_BEFORE_BEGIN = 1
+	SECT_STATE_BEGIN_PREFIX = 2
+	SECT_STATE_BEGIN_SUFFIX = 3
+	SECT_STATE_END_PREFIX = 4
+	SECT_STATE_END_NOW = 5
+)
+
+type SectionState int
+
+func (an *Analyser) GetSectionState() (SectionState, *Sect) {
+	if !an.IsSect() {
+		return SECT_STATE_NONE, nil
+	}
+	sect := an.this.Obj.(*Sect)
+	switch an.Style.SectMatchStyle {
+	case SECT_MATCH_BEGIN_PREFIX:
+		if sect.BeginPrefix == "" {
+			return SECT_STATE_BEFORE_BEGIN, sect
+		} else {
+			return SECT_STATE_END_NOW, sect
+		}
+	case SECT_MATCH_BEGIN_PREFIX_SUFFIX:
+		if sect.BeginPrefix == "" {
+			return SECT_STATE_BEFORE_BEGIN, sect
+		} else if sect.BeginSuffix == "" {
+			return SECT_STATE_BEGIN_PREFIX, sect
+		} else {
+			return SECT_STATE_END_NOW, sect
+		}
+	case SECT_MATCH_BEGIN_PREFIX_END_PREFIX:
+		if sect.BeginPrefix == "" {
+			return SECT_STATE_BEFORE_BEGIN, sect
+		} else if sect.EndPrefix == "" {
+			return SECT_STATE_BEGIN_SUFFIX, sect
+		} else {
+			return SECT_STATE_END_NOW, sect
+		}
+	case SECT_MATCH_ALL:
+		if sect.BeginPrefix == "" {
+			return SECT_STATE_BEFORE_BEGIN, sect
+		} else if sect.BeginSuffix == "" {
+			return SECT_STATE_BEGIN_PREFIX, sect
+		} else if sect.EndPrefix == "" {
+			return SECT_STATE_BEGIN_SUFFIX, sect
+		} else if sect.EndSuffix == "" {
+			return SECT_STATE_END_PREFIX, sect
+		} else {
+			return SECT_STATE_END_NOW, sect
+		}
+	default:
+		return SECT_STATE_NONE, sect
+	}
 }
 
 func (an *Analyser) BeginSectionSetPrefix(style string) {
-	an.EnterSect()
-	an.this.Obj.(*Sect).BeginPrefix = style
+	if state, sect := an.GetSectionState(); state == SECT_STATE_END_NOW {
+		sect.BeginPrefix = style
+		an.storeContent()
+		an.EndSection()
+	} else if state > SECT_STATE_BEGIN_PREFIX {
+		an.storeContent()
+	} else {
+		an.EnterSect()
+		an.this.Obj.(*Sect).BeginPrefix = style
+	}
 }
 func (an *Analyser) BeginSectionSetSuffix(style string) {
-	if an.IsSect() {
-		an.this.Obj.(*Sect).BeginSuffix = style
-	} else {
+	if state, sect := an.GetSectionState(); state == SECT_STATE_END_NOW {
+		sect.BeginSuffix = style
 		an.storeContent()
+		an.EndSection()
+	}else if state < SECT_STATE_BEGIN_PREFIX || state > SECT_STATE_BEGIN_SUFFIX {
+		an.storeContent()
+	} else {
+		sect.BeginSuffix = style
 	}
 }
 func (an *Analyser) EndSectionSetPrefix(style string) {
-	if an.IsSect() {
-		an.this.Obj.(*Sect).EndPrefix = style
-		if len(an.Style.SectEndSuffix) == 0 {
-			an.EndSection()
-		}
-	} else {
+	if state, sect := an.GetSectionState(); state == SECT_STATE_END_NOW {
+		sect.EndPrefix = style
 		an.storeContent()
+		an.EndSection()
+	}else if state < SECT_STATE_BEGIN_SUFFIX || state > SECT_STATE_END_PREFIX{
+		an.storeContent()
+	} else {
+		sect.EndPrefix = style
 	}
 
 }
 func (an *Analyser) EndSectionSetSuffix(style string) {
-	if an.IsSect() {
-		an.this.Obj.(*Sect).EndSuffix = style
-		an.EndSection()
-	} else {
+	if state, sect := an.GetSectionState(); state == SECT_STATE_END_NOW {
+		sect.EndSuffix = style
 		an.storeContent()
+		an.EndSection()
+	}else if state < SECT_STATE_END_PREFIX {
+		an.storeContent()
+	} else {
+		sect.EndPrefix = style
 	}
 }
