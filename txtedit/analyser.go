@@ -189,11 +189,9 @@ func (an *Analyser) newSiblingIfNotNil() {
 }
 
 func (an *Analyser) newLeaf() {
-	if an.this.Obj == nil {
-		return
-	}
 	newLeaf := &DocNode{Parent: an.this, Leaves: make([]*DocNode, 0, 8)}
 	an.this.Leaves = append(an.this.Leaves, newLeaf)
+	fmt.Println("New leaf is ", newLeaf, "and this is ", an.this, "and parent will be ", newLeaf.Parent)
 	an.this = newLeaf
 }
 
@@ -340,32 +338,85 @@ func (an *Analyser) ContinueStmt(style string) {
 }
 
 func (an *Analyser) NewSection() {
-	if an.this.Obj == nil {
-		an.EndStmt()
-		an.this.Obj = new(Sect)
-	}else if _, isSect := an.this.Obj.(*Sect); !isSect {
-		an.EndStmt()
-		an.newLeaf()
-		an.this.Obj = new(Sect)
-	}
-}
+	an.EndStmt()
 
-func (an *Analyser) EnterSect() {
-	an.NewSection()
+	an.this.Obj = new(Sect)
+	fmt.Println("new section creates new leaf,", an.this.Obj)
+	an.newLeaf()
 }
 
 func (an *Analyser) IsSect() bool {
-	if an.this.Obj == nil {
+	fmt.Println("issect, this is ", an.this)
+	if an.this.Parent == nil || an.this.Parent.Obj == nil {
 		return false
-	} else if _, isSect := an.this.Obj.(*Sect); isSect {
+	} else if _, isSect := an.this.Parent.Obj.(*Sect); isSect {
 		return true
 	} else {
 		return false
 	}
 }
 
+func (an *Analyser) FindThisLeaf() int {
+	if an.this.Parent == nil {
+		return -1
+	}
+	for i, leaf := range an.this.Parent.Leaves {
+		if leaf == an.this {
+			return i
+		}
+	}
+	return -1
+}
+
+func (an *Analyser) GetPreviousLeaf() *Stmt {
+	thisLeaf := an.FindThisLeaf()
+	if thisLeaf == -1 {
+		return nil
+	}
+	if thisLeaf == 0 {
+		return nil
+	}
+	prevLeaf := an.this.Parent.Leaves[thisLeaf - 1]
+	if stmt, ok := prevLeaf.Obj.(*Stmt); ok {
+		return stmt
+	}
+	return nil
+}
+
 func (an *Analyser) EndSection() {
+	if sect, isSect := an.this.Obj.(*Sect); isSect {
+		fmt.Println("section ends here")
+		minNumLeaves := 0
+		if an.Style.BeginSectWithStmt {
+			if len(an.Style.SectBeginSuffix) == 0 {
+				sect.Begin = an.GetPreviousLeaf()
+			} else {
+				firstLeaf := an.this.Leaves[0]
+				if stmt, ok := firstLeaf.Obj.(*Stmt); ok {
+					fmt.Println("successfully set sect.begin")
+					an.this.Leaves = an.this.Leaves[1:]
+					sect.Begin = stmt
+					minNumLeaves++
+				}
+			}
+		}
+		if an.Style.EndSectWithStmt {
+			if len(an.Style.SectEndSuffix) > 0 {
+				if len(an.this.Leaves) > minNumLeaves {
+					lastLeaf := an.this.Leaves[len(an.this.Leaves) - 1]
+					if stmt, ok := lastLeaf.Obj.(*Stmt); ok {
+						fmt.Println("successfully set sect.end")
+						an.this.Leaves = an.this.Leaves[0:len(an.this.Leaves) - 1]
+						sect.End = stmt
+					}
+				}
+			}
+		}
+	}else {
+		fmt.Println("this is not a section but it ends here, why?")
+	}
 	an.this = an.this.Parent
+
 	fmt.Println("section ends here")
 }
 
@@ -382,9 +433,10 @@ type SectionState int
 
 func (an *Analyser) GetSectionState() (SectionState, *Sect) {
 	if !an.IsSect() {
+		fmt.Println("not in section!!")
 		return SECT_STATE_NONE, nil
 	}
-	sect := an.this.Obj.(*Sect)
+	sect := an.this.Parent.Obj.(*Sect)
 	switch an.Style.SectMatchStyle {
 	case SECT_MATCH_BEGIN_PREFIX:
 		if sect.BeginPrefix == "" {
@@ -426,15 +478,19 @@ func (an *Analyser) GetSectionState() (SectionState, *Sect) {
 }
 
 func (an *Analyser) BeginSectionSetPrefix(style string) {
-	if state, sect := an.GetSectionState(); state == SECT_STATE_END_NOW {
+	state, sect := an.GetSectionState()
+	fmt.Println("prefix state is ", state)
+	if  state == SECT_STATE_END_NOW {
 		sect.BeginPrefix = style
 		an.storeContent()
 		an.EndSection()
 	} else if state > SECT_STATE_BEGIN_PREFIX {
 		an.storeContent()
 	} else {
-		an.EnterSect()
-		an.this.Obj.(*Sect).BeginPrefix = style
+		fmt.Println("New section is going to be created")
+		an.NewSection()
+		an.this.Parent.Obj.(*Sect).BeginPrefix = style
+		an.storeContent()
 	}
 }
 func (an *Analyser) BeginSectionSetSuffix(style string) {
@@ -446,6 +502,7 @@ func (an *Analyser) BeginSectionSetSuffix(style string) {
 		an.storeContent()
 	} else {
 		sect.BeginSuffix = style
+		an.storeContent()
 	}
 }
 func (an *Analyser) EndSectionSetPrefix(style string) {
@@ -453,10 +510,11 @@ func (an *Analyser) EndSectionSetPrefix(style string) {
 		sect.EndPrefix = style
 		an.storeContent()
 		an.EndSection()
-	}else if state < SECT_STATE_BEGIN_SUFFIX || state > SECT_STATE_END_PREFIX{
+	}else if state < SECT_STATE_BEGIN_SUFFIX || state > SECT_STATE_END_PREFIX {
 		an.storeContent()
 	} else {
 		sect.EndPrefix = style
+		an.storeContent()
 	}
 
 }
@@ -469,5 +527,6 @@ func (an *Analyser) EndSectionSetSuffix(style string) {
 		an.storeContent()
 	} else {
 		sect.EndPrefix = style
+		an.storeContent()
 	}
 }
