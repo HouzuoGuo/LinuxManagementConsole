@@ -11,9 +11,9 @@ func (an *Analyser) LookFor(match []string) (string, int) {
 				continue
 			}
 		} else {
-			if an.here + len(match) > len(an.text) {
+			if an.here + len(style) > len(an.text) {
 				continue
-			} else if string(an.text[an.here:an.here + len(match)]) != style {
+			} else if string(an.text[an.here:an.here + len(style)]) != style {
 				continue
 			} else {
 				return style, len(style)
@@ -85,27 +85,29 @@ func (an *Analyser) Analyse() {
 			fmt.Println("StmtEnd: " + style)
 			an.EndStmt()
 			an.lastBranch = an.here + adv
-		} else if style, adv = an.LookFor(an.Style.SectBeginPrefix); adv > 0 {
-			fmt.Println("SectBeginPrefix: " + style)
-			an.BeginSectionSetPrefix(style)
-			an.lastBranch = an.here + adv
-		} else if style, adv = an.LookFor(an.Style.SectBeginSuffix); adv > 0 {
-			fmt.Println("SectBeginSuffix: " + style)
-			an.BeginSectionSetSuffix(style)
-			an.lastBranch = an.here + adv
-		} else if style, adv = an.LookFor(an.Style.SectEndPrefix); adv > 0 {
-			fmt.Println("SectEndPrefix: " + style)
-			an.EndSectionSetPrefix(style)
-			an.lastBranch = an.here + adv
 		} else if style, adv = an.LookFor(an.Style.SectEndSuffix); adv > 0 {
 			fmt.Println("SectEndSuffix: " + style)
 			an.EndSectionSetSuffix(style)
 			an.lastBranch = an.here + adv
+		}  else if style, adv = an.LookFor(an.Style.SectEndPrefix); adv > 0 {
+			fmt.Println("SectEndPrefix: " + style)
+			an.EndSectionSetPrefix(style)
+			an.lastBranch = an.here + adv
+		}else if style, adv = an.LookFor(an.Style.SectBeginSuffix); adv > 0 {
+			fmt.Println("SectBeginSuffix: " + style)
+			an.BeginSectionSetSuffix(style)
+			an.lastBranch = an.here + adv
+		} else if style, adv = an.LookFor(an.Style.SectBeginPrefix); adv > 0 {
+			fmt.Println("SectBeginPrefix: " + style)
+			an.BeginSectionSetPrefix(style)
+			an.lastBranch = an.here + adv
 		} else {
-			fmt.Println("text '" + string(an.text[an.here]) + "' does not match any condition")
+			fmt.Println("text '" + string(an.text[an.here]) + "' does not match any condition", an.lastBranch, an.here, an.commentCtx, an.valCtx, an.stmtCtx)
 			adv = 1
 		}
 	}
+	fmt.Println("Analyse finished", an.lastBranch, an.here)
 	an.storeContent()
+	fmt.Println("Analyse will end stmt for one last time")
 	an.EndStmt()
 }

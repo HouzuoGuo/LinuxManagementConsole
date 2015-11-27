@@ -4,21 +4,16 @@ import "testing"
 
 var input = `
 <SA>
-	Abc
-	<SB>
-		Def
-	</SB>
+	123
 </SA>
+456
 `
 
 var input2 = `
-[Common]
-1
-2
+abc "def" 'ghi' #jkl
+   mno
 
-[Special]
-3
-4`
+`
 
 func TestAnalyser(t *testing.T) {
 	an := NewAnalyser(&AnalyserStyle{

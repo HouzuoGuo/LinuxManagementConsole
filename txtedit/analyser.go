@@ -16,7 +16,7 @@ type Val struct {
 }
 
 func (val *Val) Debug() string {
-	return fmt.Sprintf("q%s %s%s", val.QuoteStyle, val.Text, val.TrailingSpaces)
+	return fmt.Sprintf("Quote[%s] Text[%s] Trailing[%s]", val.QuoteStyle, val.Text, val.TrailingSpaces)
 }
 
 type Comment struct {
@@ -25,7 +25,7 @@ type Comment struct {
 }
 
 func (comment *Comment) Debug() string {
-	return fmt.Sprintf("c%s %s", comment.CommentStyle, comment.Content)
+	return fmt.Sprintf("Comment[%s] Content[%s]", comment.CommentStyle, comment.Content)
 }
 
 type StmtContinue struct {
@@ -33,7 +33,7 @@ type StmtContinue struct {
 }
 
 func (cont *StmtContinue) Debug() string {
-	return fmt.Sprintf("continue '%s'", cont.Style)
+	return fmt.Sprintf("Continue[%s]", cont.Style)
 }
 
 type Stmt struct {
@@ -48,7 +48,7 @@ func (stmt *Stmt) Debug() string {
 	for _, piece := range stmt.Pieces {
 		out += "[" + piece.(DebugPrint).Debug() + "]"
 	}
-	return fmt.Sprintf("s'%s' %s e%v", stmt.Indent, out, []byte(stmt.End))
+	return fmt.Sprintf("Indent[%s] Pieces[%s] End[%v]", stmt.Indent, out, []byte(stmt.End))
 }
 
 type Sect struct {
@@ -68,7 +68,7 @@ func (sect *Sect) Debug() string {
 	if sect.End != nil {
 		endStmtStr = sect.End.Debug()
 	}
-	return fmt.Sprintf("Section %s %s %s, ends with %s %s %s",
+	return fmt.Sprintf("Section[%s][%s][%s] End[%s][%s][%s]",
 		sect.BeginPrefix, beginStmtStr, sect.BeginSuffix,
 		sect.EndPrefix, endStmtStr, sect.EndSuffix)
 }
@@ -114,6 +114,7 @@ func (style *AnalyserStyle) SetMatchStyle() {
 	}else {
 		style.SectMatchStyle = SECT_MATCH_BEGIN_PREFIX
 	}
+	fmt.Println("Analyser match style is ", style.SectMatchStyle)
 }
 
 type Analyser struct {
@@ -162,7 +163,7 @@ func DebugNode(node *DocNode, indent int) {
 
 func Print(root *DocNode) {
 	fmt.Println(root.Obj.(DebugPrint).Debug())
-	fmt.Println("-->")
+	fmt.Println(">>>")
 	for _, leaf := range root.Leaves {
 		Print(leaf)
 	}
@@ -170,6 +171,7 @@ func Print(root *DocNode) {
 
 func (an *Analyser) newSiblingIfNotNil() {
 	if an.this.Obj == nil {
+		fmt.Println("No new sibling because obj is nil")
 		return
 	}
 	if parent := an.this.Parent; parent == nil {
@@ -181,17 +183,19 @@ func (an *Analyser) newSiblingIfNotNil() {
 		newLeaf := &DocNode{Parent: an.Root, Leaves: make([]*DocNode, 0, 8)}
 		an.Root.Leaves = append(an.Root.Leaves, newLeaf)
 		an.this = newLeaf
+		fmt.Println("New sibling for root has been created")
 	} else {
 		newLeaf := &DocNode{Parent: parent, Leaves: make([]*DocNode, 0, 8)}
 		parent.Leaves = append(parent.Leaves, newLeaf)
 		an.this = newLeaf
+		fmt.Println("New sibling for non-root node")
 	}
 }
 
 func (an *Analyser) newLeaf() {
 	newLeaf := &DocNode{Parent: an.this, Leaves: make([]*DocNode, 0, 8)}
 	an.this.Leaves = append(an.this.Leaves, newLeaf)
-	fmt.Println("New leaf is ", newLeaf, "and this is ", an.this, "and parent will be ", newLeaf.Parent)
+	fmt.Println("New leaf is created, this is ", an.this, ", new leaf is ", newLeaf)
 	an.this = newLeaf
 }
 
@@ -199,22 +203,25 @@ func (an *Analyser) BeginComment(style string) {
 	if an.commentCtx == nil {
 		an.commentCtx = new(Comment)
 		an.commentCtx.CommentStyle = style
+		fmt.Println("New comment is created")
 	}
 }
 
 func (an *Analyser) EnterComment(style string) {
+	an.EnterStmt()
 	if an.commentCtx == nil {
 		an.BeginComment(style)
 	} else {
-		return
+		fmt.Println("EnterComment does nothing")
 	}
 }
 
 func (an *Analyser) EndComment() {
 	if an.commentCtx == nil {
+		fmt.Println("EndComment does nothing")
 		return
 	} else {
-		fmt.Println("endcomment will store content")
+		fmt.Println("EndComment will store content")
 		an.storeContent()
 		an.EnterStmt()
 		an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.commentCtx)
@@ -224,23 +231,26 @@ func (an *Analyser) EndComment() {
 
 func (an *Analyser) NewVal() {
 	if an.valCtx == nil {
+		fmt.Println("New val is created")
 		an.valCtx = new(Val)
 	}
 }
 
 func (an *Analyser) EnterVal() {
+	an.EnterStmt()
 	if an.valCtx == nil {
 		an.NewVal()
 	} else {
-		return
+		fmt.Println("EnterVal does nothing")
 	}
 }
 
 func (an *Analyser) EndVal() {
 	if an.valCtx == nil {
+		fmt.Println("EndVal does nothing")
 		return
 	} else {
-		fmt.Println("endval will store content")
+		fmt.Println("EndVal will store content")
 		an.storeContent()
 		an.EnterStmt()
 		an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.valCtx)
@@ -249,38 +259,48 @@ func (an *Analyser) EndVal() {
 }
 
 func (an *Analyser) NewStmt() {
-	fmt.Println("newstmt called")
 	if an.stmtCtx == nil {
+		fmt.Println("New stmt will be created")
 		an.newSiblingIfNotNil()
 		an.stmtCtx = new(Stmt)
 		an.this.Obj = an.stmtCtx
+		fmt.Println("New stmt is created")
 	}
 }
 
 func (an *Analyser) EnterStmt() {
-	fmt.Println("enterstmt called")
 	if an.stmtCtx == nil {
 		an.NewStmt()
 	} else {
-		fmt.Println("enterstmt will do nothing")
+		fmt.Println("EnterStmt does nothing")
 		return
 	}
 }
 
 func (an *Analyser) EndStmt() {
+	an.storeContent()
 	an.EndComment()
 	an.EndVal()
 	if an.ignoreNewStmtOnce {
 		an.ignoreNewStmtOnce = false
+		fmt.Println("EndStmt does nothing because flag is true")
 		return
 	}
 	if an.stmtCtx == nil {
+		fmt.Println("EndStmt does nothing because stmt is nil")
 		return
 	} else {
-		an.storeContent()
+		if an.commentCtx != nil {
+			an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.commentCtx)
+		}
+		if an.valCtx != nil {
+			an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.valCtx)
+		}
 		an.this.Obj = an.stmtCtx
 		an.newSiblingIfNotNil()
 	}
+	an.commentCtx = nil
+	an.valCtx = nil
 	an.stmtCtx = nil
 }
 
@@ -288,35 +308,39 @@ func (an *Analyser) storeContent() {
 	if an.here - an.lastBranch > 0 {
 		missedContent := an.text[an.lastBranch:an.here]
 		if an.commentCtx != nil {
-			fmt.Println("missed content ", missedContent, "will be stored in comment")
+			fmt.Println("missed content", missedContent, "will be stored in comment")
 			an.commentCtx.Content += missedContent
 		} else {
-			fmt.Println("missed content ", missedContent, " will be stored in val")
+			fmt.Println("missed content", missedContent, "will be stored in val")
 			an.EnterVal()
 			an.valCtx.Text += missedContent
 		}
 		an.lastBranch = an.here
+	} else {
+		fmt.Println("storeContent does nothing")
 	}
 }
 func (an *Analyser) storeSpaces(spaces string) {
 	an.storeContent()
 	fmt.Println("About to store space '" + spaces + "'")
 	if an.ignoreNewStmtOnce {
-		fmt.Println("spaces are going to new val")
+		fmt.Println("Spaces are going into new val")
 		an.EndVal()
 		an.NewVal()
 		an.valCtx.TrailingSpaces += spaces
 		an.EndVal()
 	} else if an.commentCtx != nil {
+		fmt.Println("Spaces are going into context comment")
 		an.commentCtx.Content += spaces
 	} else if an.valCtx != nil {
+		fmt.Println("Spaces are going into value trailing spaces")
 		an.valCtx.TrailingSpaces = spaces
 		an.EndVal()
 	} else if an.stmtCtx != nil {
-		fmt.Println("store space going to set indent")
+		fmt.Println("Spaces set indent")
 		an.stmtCtx.Indent += spaces
 	} else if an.stmtCtx == nil {
-		fmt.Println("store space going to enter stmt")
+		fmt.Println("Spaces set indent and makes a new statement")
 		an.EnterStmt()
 		an.stmtCtx.Indent += spaces
 	} else {
@@ -327,6 +351,7 @@ func (an *Analyser) storeSpaces(spaces string) {
 func (an *Analyser) ContinueStmt(style string) {
 	if an.valCtx != nil && an.valCtx.QuoteStyle != "" {
 		an.valCtx.Text += style
+		fmt.Println("Continue statement mark goes into value")
 		return
 	}
 	an.storeContent()
@@ -335,18 +360,16 @@ func (an *Analyser) ContinueStmt(style string) {
 	an.EnterStmt()
 	an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, &StmtContinue{Style:style})
 	an.ignoreNewStmtOnce = true
+	fmt.Println("Continue statement flag is set")
 }
 
 func (an *Analyser) NewSection() {
 	an.EndStmt()
-
 	an.this.Obj = new(Sect)
-	fmt.Println("new section creates new leaf,", an.this.Obj)
 	an.newLeaf()
 }
 
 func (an *Analyser) IsSect() bool {
-	fmt.Println("issect, this is ", an.this)
 	if an.this.Parent == nil || an.this.Parent.Obj == nil {
 		return false
 	} else if _, isSect := an.this.Parent.Obj.(*Sect); isSect {
@@ -412,11 +435,11 @@ func (an *Analyser) EndSection() {
 				}
 			}
 		}
+
 	}else {
 		fmt.Println("this is not a section but it ends here, why?")
 	}
 	an.this = an.this.Parent
-
 	fmt.Println("section ends here")
 }
 
@@ -520,13 +543,16 @@ func (an *Analyser) EndSectionSetPrefix(style string) {
 }
 func (an *Analyser) EndSectionSetSuffix(style string) {
 	if state, sect := an.GetSectionState(); state == SECT_STATE_END_NOW {
+		fmt.Println("EndSectionSetSuffix: end now")
 		sect.EndSuffix = style
 		an.storeContent()
 		an.EndSection()
 	}else if state < SECT_STATE_END_PREFIX {
+		fmt.Println("EndSectionSetSuffix: store content")
 		an.storeContent()
 	} else {
-		sect.EndPrefix = style
+		fmt.Println("EndSectionSetSuffix: store content and keep EndSuffix")
+		sect.EndSuffix = style
 		an.storeContent()
 	}
 }
