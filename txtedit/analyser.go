@@ -56,7 +56,7 @@ type Sect struct {
 	BeginPrefix, BeginSuffix string
 	EndPrefix, EndSuffix     string
 	// Pieces inside section are DocNodes
-	End                      *Stmt
+	End *Stmt
 }
 
 func (sect *Sect) Debug() string {
@@ -81,10 +81,10 @@ type DocNode struct {
 }
 
 const (
-	SECT_MATCH_BEGIN_PREFIX = 0
-	SECT_MATCH_BEGIN_PREFIX_SUFFIX = 1
+	SECT_MATCH_BEGIN_PREFIX            = 0
+	SECT_MATCH_BEGIN_PREFIX_SUFFIX     = 1
 	SECT_MATCH_BEGIN_PREFIX_END_PREFIX = 2
-	SECT_MATCH_ALL = 3
+	SECT_MATCH_ALL                     = 3
 )
 
 type SectionMatchStyle int
@@ -96,39 +96,47 @@ type AnalyserStyle struct {
 	Quote                              []string
 	BeginSectWithStmt, EndSectWithStmt bool
 
-	SectBeginPrefix                    []string
-	SectBeginSuffix                    []string
-	SectEndPrefix                      []string
-	SectEndSuffix                      []string
+	SectBeginPrefix []string
+	SectBeginSuffix []string
+	SectEndPrefix   []string
+	SectEndSuffix   []string
 
-	SectMatchStyle                     SectionMatchStyle
+	SectMatchStyle         SectionMatchStyle
+	AmbiguousSectionSuffix bool
 }
 
 func (style *AnalyserStyle) SetMatchStyle() {
 	if len(style.SectEndSuffix) > 0 && len(style.SectEndPrefix) > 0 {
 		style.SectMatchStyle = SECT_MATCH_ALL
-	}else if len(style.SectEndPrefix) > 0 && len(style.SectBeginPrefix) > 0 {
+	} else if len(style.SectEndPrefix) > 0 && len(style.SectBeginPrefix) > 0 {
 		style.SectMatchStyle = SECT_MATCH_BEGIN_PREFIX_END_PREFIX
-	}else if len(style.SectBeginSuffix) > 0 && len(style.SectBeginPrefix) > 0 {
+	} else if len(style.SectBeginSuffix) > 0 && len(style.SectBeginPrefix) > 0 {
 		style.SectMatchStyle = SECT_MATCH_BEGIN_PREFIX_SUFFIX
-	}else {
+	} else {
 		style.SectMatchStyle = SECT_MATCH_BEGIN_PREFIX
+	}
+	for _, style1 := range style.SectBeginSuffix {
+		for _, style2 := range style.SectEndSuffix {
+			if style1 == style2 {
+				style.AmbiguousSectionSuffix = true
+			}
+		}
 	}
 	fmt.Println("Analyser match style is ", style.SectMatchStyle)
 }
 
 type Analyser struct {
-	Style             *AnalyserStyle
-	Root              *DocNode
+	Style *AnalyserStyle
+	Root  *DocNode
 
 	text              string
 	lastBranch, here  int
 	this              *DocNode
 	ignoreNewStmtOnce bool
 
-	valCtx            *Val
-	commentCtx        *Comment
-	stmtCtx           *Stmt
+	valCtx     *Val
+	commentCtx *Comment
+	stmtCtx    *Stmt
 }
 
 func NewAnalyser(style *AnalyserStyle, input string) (ret *Analyser) {
@@ -148,13 +156,13 @@ func DebugNode(node *DocNode, indent int) {
 	if node.Obj == nil {
 		fmt.Print(prefix + "Node - nil")
 	} else {
-		fmt.Print(prefix + "Node - ", node.Obj.(DebugPrint).Debug())
+		fmt.Print(prefix+"Node - ", node.Obj.(DebugPrint).Debug())
 	}
 
 	if len(node.Leaves) > 0 {
 		fmt.Println(" -->")
 		for _, leaf := range node.Leaves {
-			DebugNode(leaf, indent + 2)
+			DebugNode(leaf, indent+2)
 		}
 	} else {
 		fmt.Println()
@@ -305,7 +313,7 @@ func (an *Analyser) EndStmt() {
 }
 
 func (an *Analyser) storeContent() {
-	if an.here - an.lastBranch > 0 {
+	if an.here-an.lastBranch > 0 {
 		missedContent := an.text[an.lastBranch:an.here]
 		if an.commentCtx != nil {
 			fmt.Println("missed content", missedContent, "will be stored in comment")
@@ -358,13 +366,19 @@ func (an *Analyser) ContinueStmt(style string) {
 	an.EndComment()
 	an.EndVal()
 	an.EnterStmt()
-	an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, &StmtContinue{Style:style})
+	an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, &StmtContinue{Style: style})
 	an.ignoreNewStmtOnce = true
 	fmt.Println("Continue statement flag is set")
 }
 
 func (an *Analyser) NewSection() {
 	an.EndStmt()
+	fmt.Println("NewSection from here:", an.this)
+	if an.this == an.Root {
+		an.newLeaf()
+	} else {
+		an.newSiblingIfNotNil()
+	}
 	an.this.Obj = new(Sect)
 	an.newLeaf()
 }
@@ -399,7 +413,7 @@ func (an *Analyser) GetPreviousLeaf() *Stmt {
 	if thisLeaf == 0 {
 		return nil
 	}
-	prevLeaf := an.this.Parent.Leaves[thisLeaf - 1]
+	prevLeaf := an.this.Parent.Leaves[thisLeaf-1]
 	if stmt, ok := prevLeaf.Obj.(*Stmt); ok {
 		return stmt
 	}
@@ -407,8 +421,21 @@ func (an *Analyser) GetPreviousLeaf() *Stmt {
 }
 
 func (an *Analyser) EndSection() {
-	if sect, isSect := an.this.Obj.(*Sect); isSect {
-		fmt.Println("section ends here")
+	if _, sect := an.GetSectionState(); sect == nil {
+		fmt.Println("this is not a section but it ends here, why?")
+	} else {
+		fmt.Println("section ends here, saving the latest statement")
+		an.EndStmt()
+		an.this = an.this.Parent
+		// an.this is now the parent - section object
+		// Remove the last leaf if it holds no object
+		if an.this.Leaves[len(an.this.Leaves)-1].Obj == nil {
+			an.this.Leaves = an.this.Leaves[:len(an.this.Leaves)-1]
+		}
+		fmt.Println("section leaves:")
+		for _, leaf := range an.this.Leaves {
+			fmt.Println(leaf.Obj.(DebugPrint).Debug())
+		}
 		minNumLeaves := 0
 		if an.Style.BeginSectWithStmt {
 			if len(an.Style.SectBeginSuffix) == 0 {
@@ -426,30 +453,30 @@ func (an *Analyser) EndSection() {
 		if an.Style.EndSectWithStmt {
 			if len(an.Style.SectEndSuffix) > 0 {
 				if len(an.this.Leaves) > minNumLeaves {
-					lastLeaf := an.this.Leaves[len(an.this.Leaves) - 1]
+					lastLeaf := an.this.Leaves[len(an.this.Leaves)-1]
 					if stmt, ok := lastLeaf.Obj.(*Stmt); ok {
 						fmt.Println("successfully set sect.end")
-						an.this.Leaves = an.this.Leaves[0:len(an.this.Leaves) - 1]
+						an.this.Leaves = an.this.Leaves[0 : len(an.this.Leaves)-1]
 						sect.End = stmt
 					}
 				}
 			}
 		}
-
-	}else {
-		fmt.Println("this is not a section but it ends here, why?")
+		fmt.Println("Section has ended")
+		fmt.Println(an.this.Parent, an.Root)
+		fmt.Println(an.this, an.Root.Leaves[0])
+		fmt.Println(an.this.Obj, an.Root.Leaves[0].Obj)
+		an.newSiblingIfNotNil()
 	}
-	an.this = an.this.Parent
-	fmt.Println("section ends here")
 }
 
 const (
-	SECT_STATE_NONE = 0
+	SECT_STATE_NONE         = 0
 	SECT_STATE_BEFORE_BEGIN = 1
 	SECT_STATE_BEGIN_PREFIX = 2
 	SECT_STATE_BEGIN_SUFFIX = 3
-	SECT_STATE_END_PREFIX = 4
-	SECT_STATE_END_NOW = 5
+	SECT_STATE_END_PREFIX   = 4
+	SECT_STATE_END_NOW      = 5
 )
 
 type SectionState int
@@ -503,7 +530,7 @@ func (an *Analyser) GetSectionState() (SectionState, *Sect) {
 func (an *Analyser) BeginSectionSetPrefix(style string) {
 	state, sect := an.GetSectionState()
 	fmt.Println("prefix state is ", state)
-	if  state == SECT_STATE_END_NOW {
+	if state == SECT_STATE_END_NOW {
 		sect.BeginPrefix = style
 		an.storeContent()
 		an.EndSection()
@@ -512,46 +539,55 @@ func (an *Analyser) BeginSectionSetPrefix(style string) {
 	} else {
 		fmt.Println("New section is going to be created")
 		an.NewSection()
+		fmt.Println(an.this.Parent, an.this)
 		an.this.Parent.Obj.(*Sect).BeginPrefix = style
 		an.storeContent()
 	}
 }
+
 func (an *Analyser) BeginSectionSetSuffix(style string) {
 	if state, sect := an.GetSectionState(); state == SECT_STATE_END_NOW {
+		fmt.Println("BeginSectionSetSuffix: set style and end")
 		sect.BeginSuffix = style
 		an.storeContent()
 		an.EndSection()
-	}else if state < SECT_STATE_BEGIN_PREFIX || state > SECT_STATE_BEGIN_SUFFIX {
+	} else if state < SECT_STATE_BEGIN_PREFIX || state > SECT_STATE_BEGIN_SUFFIX {
+		fmt.Println("BeginSectionSetSuffix: no match, store content")
 		an.storeContent()
 	} else {
+		fmt.Println("BeginSectionSetSuffix: only set style")
 		sect.BeginSuffix = style
 		an.storeContent()
 	}
 }
+
 func (an *Analyser) EndSectionSetPrefix(style string) {
 	if state, sect := an.GetSectionState(); state == SECT_STATE_END_NOW {
+		fmt.Println("EndSectionSetPrefix: set style and end")
 		sect.EndPrefix = style
 		an.storeContent()
 		an.EndSection()
-	}else if state < SECT_STATE_BEGIN_SUFFIX || state > SECT_STATE_END_PREFIX {
+	} else if state < SECT_STATE_BEGIN_SUFFIX || state > SECT_STATE_END_PREFIX {
+		fmt.Println("EndSectionSetPrefix: no match, store content")
 		an.storeContent()
 	} else {
+		fmt.Println("EndSectionSetPrefix: only set style")
 		sect.EndPrefix = style
 		an.storeContent()
 	}
-
 }
+
 func (an *Analyser) EndSectionSetSuffix(style string) {
-	if state, sect := an.GetSectionState(); state == SECT_STATE_END_NOW {
-		fmt.Println("EndSectionSetSuffix: end now")
+	if state, sect := an.GetSectionState(); state >= SECT_STATE_END_PREFIX {
+		fmt.Println("EndSectionSetSuffix: set style and end")
 		sect.EndSuffix = style
 		an.storeContent()
 		an.EndSection()
-	}else if state < SECT_STATE_END_PREFIX {
-		fmt.Println("EndSectionSetSuffix: store content")
-		an.storeContent()
+	} else if state < SECT_STATE_END_PREFIX && an.Style.AmbiguousSectionSuffix {
+		fmt.Println("EndSectionSetSuffix: ambiguous suffix")
+		an.BeginSectionSetSuffix(style)
 	} else {
-		fmt.Println("EndSectionSetSuffix: store content and keep EndSuffix")
+		fmt.Println("EndSectionSetSuffix: only set style")
 		sect.EndSuffix = style
 		an.storeContent()
 	}

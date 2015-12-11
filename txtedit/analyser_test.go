@@ -4,7 +4,9 @@ import "testing"
 
 var input = `
 <SA>
-	123
+	<SB>
+		123
+	</SB>
 </SA>
 456
 `
@@ -21,10 +23,10 @@ func TestAnalyser(t *testing.T) {
 		StmtEnd:           []string{"\n"},
 		CommentBegin:      []string{"#"},
 		Quote:             []string{"\"", "'"},
-		SectBeginPrefix: []string{"<"},
-		SectBeginSuffix:[]string{">"},
-		SectEndPrefix: []string{"</"},
-		SectEndSuffix:[]string{">"},
+		SectBeginPrefix:   []string{"<"},
+		SectBeginSuffix:   []string{">"},
+		SectEndPrefix:     []string{"</"},
+		SectEndSuffix:     []string{">"},
 		BeginSectWithStmt: true,
 		EndSectWithStmt:   true},
 		input)
@@ -39,10 +41,10 @@ func TestAnalyser2(t *testing.T) {
 		StmtEnd:           []string{"\n"},
 		CommentBegin:      []string{"#"},
 		Quote:             []string{"\"", "'"},
-		SectBeginPrefix: []string{"["},
-		SectBeginSuffix:[]string{"]"},
-		SectEndPrefix: []string{""},
-		SectEndSuffix:[]string{""},
+		SectBeginPrefix:   []string{"["},
+		SectBeginSuffix:   []string{"]"},
+		SectEndPrefix:     []string{""},
+		SectEndSuffix:     []string{""},
 		BeginSectWithStmt: true,
 		EndSectWithStmt:   true},
 		input2)

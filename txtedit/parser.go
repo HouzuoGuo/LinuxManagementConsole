@@ -11,9 +11,9 @@ func (an *Analyser) LookFor(match []string) (string, int) {
 				continue
 			}
 		} else {
-			if an.here + len(style) > len(an.text) {
+			if an.here+len(style) > len(an.text) {
 				continue
-			} else if string(an.text[an.here:an.here + len(style)]) != style {
+			} else if string(an.text[an.here:an.here+len(style)]) != style {
 				continue
 			} else {
 				return style, len(style)
@@ -89,11 +89,11 @@ func (an *Analyser) Analyse() {
 			fmt.Println("SectEndSuffix: " + style)
 			an.EndSectionSetSuffix(style)
 			an.lastBranch = an.here + adv
-		}  else if style, adv = an.LookFor(an.Style.SectEndPrefix); adv > 0 {
+		} else if style, adv = an.LookFor(an.Style.SectEndPrefix); adv > 0 {
 			fmt.Println("SectEndPrefix: " + style)
 			an.EndSectionSetPrefix(style)
 			an.lastBranch = an.here + adv
-		}else if style, adv = an.LookFor(an.Style.SectBeginSuffix); adv > 0 {
+		} else if style, adv = an.LookFor(an.Style.SectBeginSuffix); adv > 0 {
 			fmt.Println("SectBeginSuffix: " + style)
 			an.BeginSectionSetSuffix(style)
 			an.lastBranch = an.here + adv
@@ -102,7 +102,7 @@ func (an *Analyser) Analyse() {
 			an.BeginSectionSetPrefix(style)
 			an.lastBranch = an.here + adv
 		} else {
-			fmt.Println("text '" + string(an.text[an.here]) + "' does not match any condition", an.lastBranch, an.here, an.commentCtx, an.valCtx, an.stmtCtx)
+			fmt.Println("text '"+string(an.text[an.here])+"' does not match any condition", an.lastBranch, an.here, an.commentCtx, an.valCtx, an.stmtCtx)
 			adv = 1
 		}
 	}
