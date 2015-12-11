@@ -9,6 +9,10 @@ type DebugPrint interface {
 	Debug() string
 }
 
+type ToText interface {
+	ToText() string
+}
+
 type Val struct {
 	QuoteStyle     string
 	Text           string
@@ -17,6 +21,9 @@ type Val struct {
 
 func (val *Val) Debug() string {
 	return fmt.Sprintf("Quote[%s] Text[%s] Trailing[%s]", val.QuoteStyle, val.Text, val.TrailingSpaces)
+}
+func (val *Val) ToText() string {
+	return fmt.Sprintf("%s%s%s%s", val.QuoteStyle, val.Text, val.QuoteStyle, val.TrailingSpaces)
 }
 
 type Comment struct {
@@ -28,12 +35,20 @@ func (comment *Comment) Debug() string {
 	return fmt.Sprintf("Comment[%s] Content[%s]", comment.CommentStyle, comment.Content)
 }
 
+func (comment *Comment) ToText() string {
+	return fmt.Sprintf("%s%s", comment.CommentStyle, comment.Content)
+}
+
 type StmtContinue struct {
 	Style string
 }
 
 func (cont *StmtContinue) Debug() string {
 	return fmt.Sprintf("Continue[%s]", cont.Style)
+}
+
+func (cont *StmtContinue) ToText() string {
+	return cont.Style
 }
 
 type Stmt struct {
@@ -49,6 +64,14 @@ func (stmt *Stmt) Debug() string {
 		out += "[" + piece.(DebugPrint).Debug() + "]"
 	}
 	return fmt.Sprintf("Indent[%s] Pieces[%s] End[%v]", stmt.Indent, out, []byte(stmt.End))
+}
+
+func (stmt *Stmt) ToText() string {
+	txt := stmt.Indent
+	for _, piece := range stmt.Pieces {
+		txt += piece.(ToText).ToText()
+	}
+	return txt + stmt.End
 }
 
 type Sect struct {
@@ -432,10 +455,6 @@ func (an *Analyser) EndSection() {
 		if an.this.Leaves[len(an.this.Leaves)-1].Obj == nil {
 			an.this.Leaves = an.this.Leaves[:len(an.this.Leaves)-1]
 		}
-		fmt.Println("section leaves:")
-		for _, leaf := range an.this.Leaves {
-			fmt.Println(leaf.Obj.(DebugPrint).Debug())
-		}
 		minNumLeaves := 0
 		if an.Style.BeginSectWithStmt {
 			if len(an.Style.SectBeginSuffix) == 0 {
@@ -463,9 +482,6 @@ func (an *Analyser) EndSection() {
 			}
 		}
 		fmt.Println("Section has ended")
-		fmt.Println(an.this.Parent, an.Root)
-		fmt.Println(an.this, an.Root.Leaves[0])
-		fmt.Println(an.this.Obj, an.Root.Leaves[0].Obj)
 		an.newSiblingIfNotNil()
 	}
 }
@@ -529,15 +545,19 @@ func (an *Analyser) GetSectionState() (SectionState, *Sect) {
 
 func (an *Analyser) BeginSectionSetPrefix(style string) {
 	state, sect := an.GetSectionState()
-	fmt.Println("prefix state is ", state)
-	if state == SECT_STATE_END_NOW {
+	if state == SECT_STATE_NONE {
+		fmt.Println("BeginSectionSetPrefix: create new first-level section")
+		an.NewSection()
+		fmt.Println(an.this.Parent, an.this)
+		an.this.Parent.Obj.(*Sect).BeginPrefix = style
+		an.storeContent()
+	} else if state == SECT_STATE_END_NOW {
+		fmt.Println("BeginSectionSetPrefix: End now")
 		sect.BeginPrefix = style
 		an.storeContent()
 		an.EndSection()
-	} else if state > SECT_STATE_BEGIN_PREFIX {
-		an.storeContent()
 	} else {
-		fmt.Println("New section is going to be created")
+		fmt.Println("BeginSectionSetPrefix: create new sub section")
 		an.NewSection()
 		fmt.Println(an.this.Parent, an.this)
 		an.this.Parent.Obj.(*Sect).BeginPrefix = style

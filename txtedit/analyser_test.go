@@ -5,10 +5,20 @@ import "testing"
 var input = `
 <SA>
 	<SB>
-		123
+		<SC>
+			"123"
+			'456'
+		</SC>
+		789
+		012
 	</SB>
+	345
+	<SC>
+		678
+	</SC>
+	901
 </SA>
-456
+234
 `
 
 var input2 = `
