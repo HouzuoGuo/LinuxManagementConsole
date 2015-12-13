@@ -1,6 +1,7 @@
 package txtedit
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 )
@@ -67,11 +68,13 @@ func (stmt *Stmt) Debug() string {
 }
 
 func (stmt *Stmt) ToText() string {
-	txt := stmt.Indent
+	var out bytes.Buffer
+	out.WriteString(stmt.Indent)
 	for _, piece := range stmt.Pieces {
-		txt += piece.(ToText).ToText()
+		out.WriteString(piece.(ToText).ToText())
 	}
-	return txt + stmt.End
+	out.WriteString(stmt.End)
+	return out.String()
 }
 
 type Sect struct {
@@ -101,6 +104,31 @@ type DocNode struct {
 	// Stmt or Sect
 	Obj    interface{}
 	Leaves []*DocNode
+}
+
+func (node *DocNode) ToText() string {
+	var out bytes.Buffer
+	sect, isSect := node.Obj.(*Sect)
+	if isSect {
+		out.WriteString(sect.BeginPrefix)
+		if sect.Begin != nil {
+			out.WriteString(sect.Begin.ToText())
+		}
+		out.WriteString(sect.BeginSuffix)
+	} else if node.Obj != nil {
+		out.WriteString(node.Obj.(ToText).ToText())
+	}
+	for _, leaf := range node.Leaves {
+		out.WriteString(leaf.ToText())
+	}
+	if isSect {
+		out.WriteString(sect.EndPrefix)
+		if sect.End != nil {
+			out.WriteString(sect.End.ToText())
+		}
+		out.WriteString(sect.EndSuffix)
+	}
+	return out.String()
 }
 
 const (
@@ -308,7 +336,7 @@ func (an *Analyser) EnterStmt() {
 	}
 }
 
-func (an *Analyser) EndStmt() {
+func (an *Analyser) EndStmt(style string) {
 	an.storeContent()
 	an.EndComment()
 	an.EndVal()
@@ -318,9 +346,15 @@ func (an *Analyser) EndStmt() {
 		return
 	}
 	if an.stmtCtx == nil {
-		fmt.Println("EndStmt does nothing because stmt is nil")
+		if style != "" {
+			fmt.Println("EndStmt makes an empty statement with only an ending")
+			an.newSiblingIfNotNil()
+			an.this.Obj = &Stmt{End: style}
+			an.newSiblingIfNotNil()
+		}
 		return
 	} else {
+		an.stmtCtx.End = style
 		if an.commentCtx != nil {
 			an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.commentCtx)
 		}
@@ -395,7 +429,7 @@ func (an *Analyser) ContinueStmt(style string) {
 }
 
 func (an *Analyser) NewSection() {
-	an.EndStmt()
+	an.EndStmt("")
 	fmt.Println("NewSection from here:", an.this)
 	if an.this == an.Root {
 		an.newLeaf()
@@ -448,7 +482,7 @@ func (an *Analyser) EndSection() {
 		fmt.Println("this is not a section but it ends here, why?")
 	} else {
 		fmt.Println("section ends here, saving the latest statement")
-		an.EndStmt()
+		an.EndStmt("")
 		an.this = an.this.Parent
 		// an.this is now the parent - section object
 		// Remove the last leaf if it holds no object
@@ -544,6 +578,7 @@ func (an *Analyser) GetSectionState() (SectionState, *Sect) {
 }
 
 func (an *Analyser) BeginSectionSetPrefix(style string) {
+	an.EndStmt("")
 	state, sect := an.GetSectionState()
 	if state == SECT_STATE_NONE {
 		fmt.Println("BeginSectionSetPrefix: create new first-level section")
@@ -566,6 +601,7 @@ func (an *Analyser) BeginSectionSetPrefix(style string) {
 }
 
 func (an *Analyser) BeginSectionSetSuffix(style string) {
+	an.EndStmt("")
 	if state, sect := an.GetSectionState(); state == SECT_STATE_END_NOW {
 		fmt.Println("BeginSectionSetSuffix: set style and end")
 		sect.BeginSuffix = style
@@ -582,6 +618,7 @@ func (an *Analyser) BeginSectionSetSuffix(style string) {
 }
 
 func (an *Analyser) EndSectionSetPrefix(style string) {
+	an.EndStmt("")
 	if state, sect := an.GetSectionState(); state == SECT_STATE_END_NOW {
 		fmt.Println("EndSectionSetPrefix: set style and end")
 		sect.EndPrefix = style
@@ -598,6 +635,7 @@ func (an *Analyser) EndSectionSetPrefix(style string) {
 }
 
 func (an *Analyser) EndSectionSetSuffix(style string) {
+	an.EndStmt("")
 	if state, sect := an.GetSectionState(); state >= SECT_STATE_END_PREFIX {
 		fmt.Println("EndSectionSetSuffix: set style and end")
 		sect.EndSuffix = style

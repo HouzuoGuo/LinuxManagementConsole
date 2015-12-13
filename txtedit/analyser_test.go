@@ -1,6 +1,9 @@
 package txtedit
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 var input = `
 <SA>
@@ -21,11 +24,11 @@ var input = `
 234
 `
 
-var input2 = `
-abc "def" 'ghi' #jkl
-   mno
+var input0 = `<A>
+</A>`
 
-`
+var input2 = `1
+2`
 
 func TestAnalyser(t *testing.T) {
 	an := NewAnalyser(&AnalyserStyle{
@@ -43,6 +46,8 @@ func TestAnalyser(t *testing.T) {
 
 	an.Analyse()
 	DebugNode(an.Root, 0)
+	fmt.Println("Reproduced:")
+	fmt.Println(an.Root.ToText())
 }
 
 func TestAnalyser2(t *testing.T) {
@@ -61,4 +66,6 @@ func TestAnalyser2(t *testing.T) {
 
 	an.Analyse()
 	DebugNode(an.Root, 0)
+	fmt.Println("Reproduced:")
+	fmt.Println(an.Root.ToText())
 }

@@ -83,7 +83,7 @@ func (an *Analyser) Analyse() {
 			an.lastBranch = an.here + adv
 		} else if style, adv = an.LookFor(an.Style.StmtEnd); adv > 0 {
 			fmt.Println("StmtEnd: " + style)
-			an.EndStmt()
+			an.EndStmt(style)
 			an.lastBranch = an.here + adv
 		} else if style, adv = an.LookFor(an.Style.SectEndSuffix); adv > 0 {
 			fmt.Println("SectEndSuffix: " + style)
@@ -109,5 +109,5 @@ func (an *Analyser) Analyse() {
 	fmt.Println("Analyse finished", an.lastBranch, an.here)
 	an.storeContent()
 	fmt.Println("Analyse will end stmt for one last time")
-	an.EndStmt()
+	an.EndStmt("")
 }
