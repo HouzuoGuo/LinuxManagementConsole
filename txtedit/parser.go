@@ -65,11 +65,11 @@ func (an *Analyser) Analyse() {
 	var spaces string
 	for an.here = 0; an.here < len(an.textInput); an.here += adv {
 		var style string
-		if style, adv = an.LookFor(an.Config.CommentBeginningMarkers); adv > 0 {
+		if style, adv = an.LookFor(an.config.CommentBeginningMarkers); adv > 0 {
 			fmt.Println("Comment: " + style)
 			an.newComment(style)
 			an.lastBranchPosition = an.here + adv
-		} else if style, adv = an.LookFor(an.Config.TextQuoteStyle); adv > 0 {
+		} else if style, adv = an.LookFor(an.config.TextQuoteStyle); adv > 0 {
 			fmt.Println("Quote: " + style)
 			an.SetQuote(style)
 			an.lastBranchPosition = an.here + adv
@@ -77,27 +77,27 @@ func (an *Analyser) Analyse() {
 			fmt.Println("Spaces: ", adv, spaces)
 			an.storeSpaces(spaces)
 			an.lastBranchPosition = an.here + adv
-		} else if style, adv = an.LookFor(an.Config.StatementContinuationMarkers); adv > 0 {
+		} else if style, adv = an.LookFor(an.config.StatementContinuationMarkers); adv > 0 {
 			fmt.Println("StmtContinue: " + style)
 			an.ContinueStmt(style)
 			an.lastBranchPosition = an.here + adv
-		} else if style, adv = an.LookFor(an.Config.StatementEndingMarkers); adv > 0 {
+		} else if style, adv = an.LookFor(an.config.StatementEndingMarkers); adv > 0 {
 			fmt.Println("StmtEnd: " + style)
 			an.endStatement(style)
 			an.lastBranchPosition = an.here + adv
-		} else if style, adv = an.LookFor(an.Config.SectionEndingSuffixes); adv > 0 {
+		} else if style, adv = an.LookFor(an.config.SectionEndingSuffixes); adv > 0 {
 			fmt.Println("SectEndSuffix: " + style)
 			an.EndSectionSetSuffix(style)
 			an.lastBranchPosition = an.here + adv
-		} else if style, adv = an.LookFor(an.Config.SectionEndingPrefixes); adv > 0 {
+		} else if style, adv = an.LookFor(an.config.SectionEndingPrefixes); adv > 0 {
 			fmt.Println("SectEndPrefix: " + style)
 			an.EndSectionSetPrefix(style)
 			an.lastBranchPosition = an.here + adv
-		} else if style, adv = an.LookFor(an.Config.SectionBeginningSuffixes); adv > 0 {
+		} else if style, adv = an.LookFor(an.config.SectionBeginningSuffixes); adv > 0 {
 			fmt.Println("SectBeginSuffix: " + style)
 			an.BeginSectionSetSuffix(style)
 			an.lastBranchPosition = an.here + adv
-		} else if style, adv = an.LookFor(an.Config.SectionBeginningPrefixes); adv > 0 {
+		} else if style, adv = an.LookFor(an.config.SectionBeginningPrefixes); adv > 0 {
 			fmt.Println("SectBeginPrefix: " + style)
 			an.BeginSectionSetPrefix(style)
 			an.lastBranchPosition = an.here + adv

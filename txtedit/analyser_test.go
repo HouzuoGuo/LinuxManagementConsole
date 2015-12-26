@@ -53,10 +53,10 @@ func TestAnalyser(t *testing.T) {
 		&PrintDebugger{})
 
 	an.Analyse()
-	DebugNode(an.RootNode, 0)
+	DebugNode(an.rootNode, 0)
 	fmt.Println("Reproduced:")
-	fmt.Println(an.RootNode.TextString())
-	if an.RootNode.TextString() != input {
+	fmt.Println(an.rootNode.TextString())
+	if an.rootNode.TextString() != input {
 		t.Fatal("no match")
 	}
 }
@@ -77,7 +77,7 @@ func TestAnalyser2(t *testing.T) {
 		&PrintDebugger{})
 
 	an.Analyse()
-	DebugNode(an.RootNode, 0)
+	DebugNode(an.rootNode, 0)
 	fmt.Println("Reproduced:")
-	fmt.Println(an.RootNode.TextString())
+	fmt.Println(an.rootNode.TextString())
 }

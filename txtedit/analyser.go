@@ -9,9 +9,9 @@ Text analyser analyses input text character by character, breaks down the whole 
 pieces that are easier for further analysis and reproduction of document text.
 */
 type Analyser struct {
-	Config   *AnalyserConfig  // document style specification and more configuration
-	Debug    AnalyzerDebugger // output from analyser's progress, and output of debug information
-	RootNode *DocumentNode    // the root node of the broken down document
+	config   *AnalyserConfig  // document style specification and more configuration
+	debug    AnalyzerDebugger // output from analyser's progress, and output of debug information
+	rootNode *DocumentNode    // the root node of the broken down document
 
 	textInput          string        // the original input text
 	lastBranchPosition int           // the character index where previous text entity/node was created
@@ -26,18 +26,18 @@ type Analyser struct {
 
 // Initialise a new text analyser.
 func NewAnalyser(textInput string, config *AnalyserConfig, debugger AnalyzerDebugger) (ret *Analyser) {
-	ret = &Analyser{textInput: textInput, Config: config, Debug: debugger}
+	ret = &Analyser{textInput: textInput, config: config, debug: debugger}
 	ret.thisNode = &DocumentNode{Parent: nil, Obj: nil, Leaves: make([]*DocumentNode, 0, 8)}
-	ret.RootNode = ret.thisNode
-	ret.Config.DetectSectionMatchMechanism()
-	ret.Debug.Printf("New analyser has been initialised, section match mechanism is", ret.Config.SectionMatchMechanism)
+	ret.rootNode = ret.thisNode
+	ret.config.DetectSectionMatchMechanism()
+	ret.debug.Printf("NewAnalyser: initialised with section match mechanism being %v", ret.config.SectionMatchMechanism)
 	return
 }
 
 // Create a new sibling node if the current node is already holding an object. Move reference to the new sibling.
 func (an *Analyser) createSiblingNode() {
-	if an.thisNode.Obj != nil {
-		an.Debug.Printf("createSiblingNode: doing nothing because this node %p is still empty", an.thisNode)
+	if an.thisNode.Obj == nil {
+		an.debug.Printf("createSiblingNode: does nothing when this node %p is still empty", an.thisNode)
 		return
 	}
 	if parent := an.thisNode.Parent; parent == nil {
@@ -45,44 +45,48 @@ func (an *Analyser) createSiblingNode() {
 			In case this node is the root node, create a new root node and make both original
 			root node and new sibling node leaves.
 		*/
-		originalRoot := an.RootNode
+		originalRoot := an.rootNode
 		newRoot := &DocumentNode{Parent: nil, Leaves: make([]*DocumentNode, 0, 8)}
 		newRoot.Leaves = append(newRoot.Leaves, originalRoot)
 		newLeaf := &DocumentNode{Parent: newRoot, Leaves: make([]*DocumentNode, 0, 8)}
 		newRoot.Leaves = append(newRoot.Leaves, newLeaf)
-		an.RootNode = newRoot
+		an.rootNode = newRoot
 		an.thisNode = newLeaf
-		an.Debug.Printf("createNewSiblingNode: new root is %p, original root %p is now a leaf, new sibling is %p",
-			an.RootNode, originalRoot, newLeaf)
+		an.debug.Printf("createSiblingNode: new root is %p, original root %p is now a leaf, new sibling is %p",
+			an.rootNode, originalRoot, newLeaf)
 	} else {
 		newLeaf := &DocumentNode{Parent: parent, Leaves: make([]*DocumentNode, 0, 8)}
 		parent.Leaves = append(parent.Leaves, newLeaf)
 		an.thisNode = newLeaf
-		an.Debug.Printf("createNewSiblingNode: new sibling is %p", newLeaf)
+		an.debug.Printf("createSiblingNode: new sibling is %p", newLeaf)
 	}
 }
 
-// Save an object into the current node and create a new sibling.
+/*
+If the current node already holds an object, then create a new sibling.
+Save an object into the current node.
+*/
 func (an *Analyser) saveNodeAndCreateSibling(saveObj interface{}) {
 	if saveObj == nil {
-		an.Debug.Printf("saveNodeAndCreateSibling: doing nothing because object to save is nil")
+		an.debug.Printf("saveNodeAndCreateSibling: does nothing when object to save is nil")
 		return
 	}
 	if an.thisNode.Obj == nil {
+		fmt.Printf("assign %+v to %p\n", saveObj, an.thisNode)
 		an.thisNode.Obj = saveObj
 	} else {
+		fmt.Printf("create sibling and assign %p to %p\n", saveObj, an.thisNode)
 		// Must not overwrite the object in this node
 		an.createSiblingNode()
 		an.thisNode.Obj = saveObj
 	}
-	an.createSiblingNode()
 }
 
 // Create a new leaf node and move reference to the new leaf.
 func (an *Analyser) createNewLeaf() {
 	newLeaf := &DocumentNode{Parent: an.thisNode, Leaves: make([]*DocumentNode, 0, 8)}
 	an.thisNode.Leaves = append(an.thisNode.Leaves, newLeaf)
-	an.Debug.Printf("createNewLeaf: %p now has a new leaf %p", an.thisNode, newLeaf)
+	an.debug.Printf("createNewLeaf: %p now has a new leaf %p", an.thisNode, newLeaf)
 	an.thisNode = newLeaf
 }
 
@@ -91,7 +95,7 @@ func (an *Analyser) newComment(commentStyle string) {
 	if an.commentContext == nil {
 		an.commentContext = new(Comment)
 		an.commentContext.CommentStyle = commentStyle
-		an.Debug.Printf("newComment: context comment is now assigned %p", an.commentContext)
+		an.debug.Printf("newComment: context comment is assigned to %p", an.commentContext)
 	}
 }
 
@@ -103,7 +107,7 @@ func (an *Analyser) endComment() {
 	an.savePendingTextOrComment()
 	an.newStatement()
 	an.statementContext.Pieces = append(an.statementContext.Pieces, an.commentContext)
-	an.Debug.Printf("endComment: comment %p is now a piece of statement %p", an.commentContext, an.statementContext)
+	an.debug.Printf("endComment: comment %p is now a piece of statement %p", an.commentContext, an.statementContext)
 	an.commentContext = nil
 }
 
@@ -111,7 +115,7 @@ func (an *Analyser) endComment() {
 func (an *Analyser) newText() {
 	if an.textContext == nil {
 		an.textContext = new(Text)
-		an.Debug.Printf("newText: context text is now assigned %p", an.textContext)
+		an.debug.Printf("newText: context text is assigned to %p", an.textContext)
 	}
 }
 
@@ -123,7 +127,7 @@ func (an *Analyser) endText() {
 	an.savePendingTextOrComment()
 	an.newStatement()
 	an.statementContext.Pieces = append(an.statementContext.Pieces, an.textContext)
-	an.Debug.Printf("endText: text %p is now a piece of statement %p", an.textContext, an.statementContext)
+	an.debug.Printf("endText: text %p is now a piece of statement %p", an.textContext, an.statementContext)
 	an.textContext = nil
 }
 
@@ -131,9 +135,8 @@ func (an *Analyser) endText() {
 func (an *Analyser) newStatement() {
 	if an.statementContext == nil {
 		an.statementContext = new(Statement)
-		an.thisNode.Obj = an.statementContext
 		an.saveNodeAndCreateSibling(an.statementContext)
-		fmt.Println("newStatement: context statement is now assigned %p", an.statementContext)
+		fmt.Println("newStatement: context statement is assigned to %p", an.statementContext)
 	}
 }
 
@@ -144,14 +147,14 @@ func (an *Analyser) endStatement(ending string) {
 	an.endComment()
 	an.endText()
 	if an.ignoreNewStatementOnce {
-		an.Debug.Printf("endStatement: not saving this node because ignoreNewStatementOnce is set")
+		an.debug.Printf("endStatement: not creating new document node when ignoreNewStatementOnce is set")
 		an.ignoreNewStatementOnce = false
 		return
 	}
 	if an.statementContext == nil && an.commentContext == nil && an.textContext == nil {
-		an.Debug.Printf("endStatement: nothing to save")
+		an.debug.Printf("endStatement: all contexts are nil, nothing to save")
 		if ending != "" {
-			an.Debug.Printf("endStatement: saving statement ending in a new statement")
+			an.debug.Printf("endStatement: save statement ending in a new statement")
 			an.saveNodeAndCreateSibling(&Statement{Ending: ending})
 		}
 		return
@@ -163,8 +166,7 @@ func (an *Analyser) endStatement(ending string) {
 	if an.textContext != nil {
 		an.statementContext.Pieces = append(an.statementContext.Pieces, an.textContext)
 	}
-	an.saveNodeAndCreateSibling(an.statementContext)
-
+	// Remember - statement context was placed in the document node tree when it was created
 	an.commentContext = nil
 	an.textContext = nil
 	an.statementContext = nil
@@ -229,15 +231,17 @@ func (an *Analyser) ContinueStmt(style string) {
 	fmt.Println("Continue statement flag is set")
 }
 
-func (an *Analyser) NewSection() {
+func (an *Analyser) newSection() {
 	an.endStatement("")
-	fmt.Println("NewSection from here:", an.thisNode)
-	if an.thisNode == an.RootNode {
+	newSection := new(Section)
+	if an.thisNode == an.rootNode {
+		an.debug.Printf("newSection: create new section from root node %p", an.thisNode)
 		an.createNewLeaf()
+		an.thisNode.Obj = new(Section)
 	} else {
-		an.createSiblingNode()
+		an.debug.Printf("newSection: create new section from node %p", an.thisNode)
+		an.saveNodeAndCreateSibling(newSection)
 	}
-	an.thisNode.Obj = new(Section)
 	an.createNewLeaf()
 }
 
@@ -291,8 +295,8 @@ func (an *Analyser) EndSection() {
 			an.thisNode.Leaves = an.thisNode.Leaves[:len(an.thisNode.Leaves)-1]
 		}
 		minNumLeaves := 0
-		if an.Config.BeginSectionWithAStatement {
-			if len(an.Config.SectionBeginningSuffixes) == 0 {
+		if an.config.BeginSectionWithAStatement {
+			if len(an.config.SectionBeginningSuffixes) == 0 {
 				sect.BeginningStatement = an.GetPreviousLeaf()
 			} else {
 				firstLeaf := an.thisNode.Leaves[0]
@@ -304,8 +308,8 @@ func (an *Analyser) EndSection() {
 				}
 			}
 		}
-		if an.Config.EndSectionWithAStatement {
-			if len(an.Config.SectionEndingSuffixes) > 0 {
+		if an.config.EndSectionWithAStatement {
+			if len(an.config.SectionEndingSuffixes) > 0 {
 				if len(an.thisNode.Leaves) > minNumLeaves {
 					lastLeaf := an.thisNode.Leaves[len(an.thisNode.Leaves)-1]
 					if stmt, ok := lastLeaf.Obj.(*Statement); ok {
@@ -319,6 +323,7 @@ func (an *Analyser) EndSection() {
 		fmt.Println("Section has ended")
 		an.createSiblingNode()
 	}
+	// Remember - section object was placed in the document node tree when it was created
 }
 
 const (
@@ -338,7 +343,7 @@ func (an *Analyser) GetSectionState() (SectionState, *Section) {
 		return SECT_STATE_NONE, nil
 	}
 	sect := an.thisNode.Parent.Obj.(*Section)
-	switch an.Config.SectionMatchMechanism {
+	switch an.config.SectionMatchMechanism {
 	case SECTION_MATCH_FLAT_SINGLE_ANCHOR:
 		if sect.BeginPrefix == "" {
 			return SECT_STATE_BEFORE_BEGIN, sect
@@ -383,7 +388,7 @@ func (an *Analyser) BeginSectionSetPrefix(style string) {
 	state, sect := an.GetSectionState()
 	if state == SECT_STATE_NONE {
 		fmt.Println("BeginSectionSetPrefix: create new first-level section")
-		an.NewSection()
+		an.newSection()
 		fmt.Println(an.thisNode.Parent, an.thisNode)
 		an.thisNode.Parent.Obj.(*Section).BeginPrefix = style
 		an.savePendingTextOrComment()
@@ -394,7 +399,7 @@ func (an *Analyser) BeginSectionSetPrefix(style string) {
 		an.EndSection()
 	} else {
 		fmt.Println("BeginSectionSetPrefix: create new sub section")
-		an.NewSection()
+		an.newSection()
 		fmt.Println(an.thisNode.Parent, an.thisNode)
 		an.thisNode.Parent.Obj.(*Section).BeginPrefix = style
 		an.savePendingTextOrComment()
@@ -442,7 +447,7 @@ func (an *Analyser) EndSectionSetSuffix(style string) {
 		sect.EndSuffix = style
 		an.savePendingTextOrComment()
 		an.EndSection()
-	} else if state < SECT_STATE_END_PREFIX && an.Config.AmbiguousSectionSuffix {
+	} else if state < SECT_STATE_END_PREFIX && an.config.AmbiguousSectionSuffix {
 		fmt.Println("EndSectionSetSuffix: ambiguous suffix")
 		an.BeginSectionSetSuffix(style)
 	} else {
