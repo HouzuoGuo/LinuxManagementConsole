@@ -27,45 +27,57 @@ var input = `
 var input0 = `<A>
 </A>`
 
-var input2 = `1
-2`
+/*
+var input2 = `zone "." in {
+    type hint;
+    file "root.hint";
+    forwarders { 192.0.2.1; 192.0.2.2; };
+};
+`
+*/
+var input2 = `a {
+};`
 
 func TestAnalyser(t *testing.T) {
-	an := NewAnalyser(&AnalyserStyle{
-		StmtContinue:      []string{"\\"},
-		StmtEnd:           []string{"\n"},
-		CommentBegin:      []string{"#"},
-		Quote:             []string{"\"", "'"},
-		SectBeginPrefix:   []string{"<"},
-		SectBeginSuffix:   []string{">"},
-		SectEndPrefix:     []string{"</"},
-		SectEndSuffix:     []string{">"},
-		BeginSectWithStmt: true,
-		EndSectWithStmt:   true},
-		input)
+	an := NewAnalyser(input, &AnalyserConfig{
+		StatementContinuationMarkers: []string{"\\"},
+		StatementEndingMarkers:       []string{"\n"},
+		CommentBeginningMarkers:      []string{"#"},
+		TextQuoteStyle:               []string{"\"", "'"},
+		SectionBeginningPrefixes:     []string{"<"},
+		SectionBeginningSuffixes:     []string{">"},
+		SectionEndingPrefixes:        []string{"</"},
+		SectionEndingSuffixes:        []string{">"},
+		BeginSectionWithAStatement:   true,
+		EndSectionWithAStatement:     true},
+		&PrintDebugger{})
 
 	an.Analyse()
-	DebugNode(an.Root, 0)
+	DebugNode(an.RootNode, 0)
 	fmt.Println("Reproduced:")
-	fmt.Println(an.Root.ToText())
+	fmt.Println(an.RootNode.TextString())
+	if an.RootNode.TextString() != input {
+		t.Fatal("no match")
+	}
 }
 
 func TestAnalyser2(t *testing.T) {
-	an := NewAnalyser(&AnalyserStyle{
-		StmtContinue:      []string{"\\"},
-		StmtEnd:           []string{"\n"},
-		CommentBegin:      []string{"#"},
-		Quote:             []string{"\"", "'"},
-		SectBeginPrefix:   []string{"["},
-		SectBeginSuffix:   []string{"]"},
-		SectEndPrefix:     []string{""},
-		SectEndSuffix:     []string{""},
-		BeginSectWithStmt: true,
-		EndSectWithStmt:   true},
-		input2)
+	an := NewAnalyser(input2,
+		&AnalyserConfig{
+			StatementContinuationMarkers: []string{"\\"},
+			StatementEndingMarkers:       []string{";"},
+			CommentBeginningMarkers:      []string{"#"},
+			TextQuoteStyle:               []string{"\"", "'"},
+			SectionBeginningPrefixes:     []string{"{"},
+			SectionBeginningSuffixes:     []string{},
+			SectionEndingPrefixes:        []string{},
+			SectionEndingSuffixes:        []string{"};"},
+			BeginSectionWithAStatement:   true,
+			EndSectionWithAStatement:     false},
+		&PrintDebugger{})
 
 	an.Analyse()
-	DebugNode(an.Root, 0)
+	DebugNode(an.RootNode, 0)
 	fmt.Println("Reproduced:")
-	fmt.Println(an.Root.ToText())
+	fmt.Println(an.RootNode.TextString())
 }

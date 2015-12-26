@@ -1,449 +1,250 @@
 package txtedit
 
 import (
-	"bytes"
 	"fmt"
-	"strings"
 )
 
-type DebugPrint interface {
-	Debug() string
-}
-
-type ToText interface {
-	ToText() string
-}
-
-type Val struct {
-	QuoteStyle     string
-	Text           string
-	TrailingSpaces string
-}
-
-func (val *Val) Debug() string {
-	return fmt.Sprintf("Quote[%s] Text[%s] Trailing[%s]", val.QuoteStyle, val.Text, val.TrailingSpaces)
-}
-func (val *Val) ToText() string {
-	return fmt.Sprintf("%s%s%s%s", val.QuoteStyle, val.Text, val.QuoteStyle, val.TrailingSpaces)
-}
-
-type Comment struct {
-	CommentStyle string
-	Content      string
-}
-
-func (comment *Comment) Debug() string {
-	return fmt.Sprintf("Comment[%s] Content[%s]", comment.CommentStyle, comment.Content)
-}
-
-func (comment *Comment) ToText() string {
-	return fmt.Sprintf("%s%s", comment.CommentStyle, comment.Content)
-}
-
-type StmtContinue struct {
-	Style string
-}
-
-func (cont *StmtContinue) Debug() string {
-	return fmt.Sprintf("Continue[%s]", cont.Style)
-}
-
-func (cont *StmtContinue) ToText() string {
-	return cont.Style
-}
-
-type Stmt struct {
-	Indent string
-	// Value or Comment or StmtContinue
-	Pieces []interface{}
-	End    string
-}
-
-func (stmt *Stmt) Debug() string {
-	var out string
-	for _, piece := range stmt.Pieces {
-		out += "[" + piece.(DebugPrint).Debug() + "]"
-	}
-	return fmt.Sprintf("Indent[%s] Pieces[%s] End[%v]", stmt.Indent, out, []byte(stmt.End))
-}
-
-func (stmt *Stmt) ToText() string {
-	var out bytes.Buffer
-	out.WriteString(stmt.Indent)
-	for _, piece := range stmt.Pieces {
-		out.WriteString(piece.(ToText).ToText())
-	}
-	out.WriteString(stmt.End)
-	return out.String()
-}
-
-type Sect struct {
-	Begin                    *Stmt
-	BeginPrefix, BeginSuffix string
-	EndPrefix, EndSuffix     string
-	// Pieces inside section are DocNodes
-	End *Stmt
-}
-
-func (sect *Sect) Debug() string {
-	beginStmtStr := ""
-	if sect.Begin != nil {
-		beginStmtStr = sect.Begin.Debug()
-	}
-	endStmtStr := ""
-	if sect.End != nil {
-		endStmtStr = sect.End.Debug()
-	}
-	return fmt.Sprintf("Section[%s][%s][%s] End[%s][%s][%s]",
-		sect.BeginPrefix, beginStmtStr, sect.BeginSuffix,
-		sect.EndPrefix, endStmtStr, sect.EndSuffix)
-}
-
-type DocNode struct {
-	Parent *DocNode
-	// Stmt or Sect
-	Obj    interface{}
-	Leaves []*DocNode
-}
-
-func (node *DocNode) ToText() string {
-	var out bytes.Buffer
-	sect, isSect := node.Obj.(*Sect)
-	if isSect {
-		out.WriteString(sect.BeginPrefix)
-		if sect.Begin != nil {
-			out.WriteString(sect.Begin.ToText())
-		}
-		out.WriteString(sect.BeginSuffix)
-	} else if node.Obj != nil {
-		out.WriteString(node.Obj.(ToText).ToText())
-	}
-	for _, leaf := range node.Leaves {
-		out.WriteString(leaf.ToText())
-	}
-	if isSect {
-		out.WriteString(sect.EndPrefix)
-		if sect.End != nil {
-			out.WriteString(sect.End.ToText())
-		}
-		out.WriteString(sect.EndSuffix)
-	}
-	return out.String()
-}
-
-const (
-	SECT_MATCH_BEGIN_PREFIX            = 0
-	SECT_MATCH_BEGIN_PREFIX_SUFFIX     = 1
-	SECT_MATCH_BEGIN_PREFIX_END_PREFIX = 2
-	SECT_MATCH_ALL                     = 3
-)
-
-type SectionMatchStyle int
-
-type AnalyserStyle struct {
-	StmtContinue                       []string
-	StmtEnd                            []string
-	CommentBegin                       []string
-	Quote                              []string
-	BeginSectWithStmt, EndSectWithStmt bool
-
-	SectBeginPrefix []string
-	SectBeginSuffix []string
-	SectEndPrefix   []string
-	SectEndSuffix   []string
-
-	SectMatchStyle         SectionMatchStyle
-	AmbiguousSectionSuffix bool
-}
-
-func (style *AnalyserStyle) SetMatchStyle() {
-	if len(style.SectEndSuffix) > 0 && len(style.SectEndPrefix) > 0 {
-		style.SectMatchStyle = SECT_MATCH_ALL
-	} else if len(style.SectEndPrefix) > 0 && len(style.SectBeginPrefix) > 0 {
-		style.SectMatchStyle = SECT_MATCH_BEGIN_PREFIX_END_PREFIX
-	} else if len(style.SectBeginSuffix) > 0 && len(style.SectBeginPrefix) > 0 {
-		style.SectMatchStyle = SECT_MATCH_BEGIN_PREFIX_SUFFIX
-	} else {
-		style.SectMatchStyle = SECT_MATCH_BEGIN_PREFIX
-	}
-	for _, style1 := range style.SectBeginSuffix {
-		for _, style2 := range style.SectEndSuffix {
-			if style1 == style2 {
-				style.AmbiguousSectionSuffix = true
-			}
-		}
-	}
-	fmt.Println("Analyser match style is ", style.SectMatchStyle)
-}
-
+/*
+Text analyser analyses input text character by character, breaks down the whole document into smaller
+pieces that are easier for further analysis and reproduction of document text.
+*/
 type Analyser struct {
-	Style *AnalyserStyle
-	Root  *DocNode
+	Config   *AnalyserConfig  // document style specification and more configuration
+	Debug    AnalyzerDebugger // output from analyser's progress, and output of debug information
+	RootNode *DocumentNode    // the root node of the broken down document
 
-	text              string
-	lastBranch, here  int
-	this              *DocNode
-	ignoreNewStmtOnce bool
+	textInput          string        // the original input text
+	lastBranchPosition int           // the character index where previous text entity/node was created
+	here               int           // index of the current character where analyser has progressed
+	thisNode           *DocumentNode // reference to the current document node
 
-	valCtx     *Val
-	commentCtx *Comment
-	stmtCtx    *Stmt
+	ignoreNewStatementOnce bool       // do not create the next new statement caused by statement continuation marker
+	textContext            *Text      // reference to the current text entity
+	commentContext         *Comment   // reference to the current comment entity
+	statementContext       *Statement // reference to the current statement
 }
 
-func NewAnalyser(style *AnalyserStyle, input string) (ret *Analyser) {
-	ret = &Analyser{Style: style, text: input}
-	ret.this = &DocNode{Parent: nil, Obj: nil, Leaves: make([]*DocNode, 0, 8)}
-	ret.Root = ret.this
-	ret.Style.SetMatchStyle()
+// Initialise a new text analyser.
+func NewAnalyser(textInput string, config *AnalyserConfig, debugger AnalyzerDebugger) (ret *Analyser) {
+	ret = &Analyser{textInput: textInput, Config: config, Debug: debugger}
+	ret.thisNode = &DocumentNode{Parent: nil, Obj: nil, Leaves: make([]*DocumentNode, 0, 8)}
+	ret.RootNode = ret.thisNode
+	ret.Config.DetectSectionMatchMechanism()
+	ret.Debug.Printf("New analyser has been initialised, section match mechanism is", ret.Config.SectionMatchMechanism)
 	return
 }
 
-func DebugNode(node *DocNode, indent int) {
-	prefix := strings.Repeat(" ", indent)
-	if node == nil {
-		fmt.Println(prefix + "(nil)")
+// Create a new sibling node if the current node is already holding an object. Move reference to the new sibling.
+func (an *Analyser) createSiblingNode() {
+	if an.thisNode.Obj != nil {
+		an.Debug.Printf("createSiblingNode: doing nothing because this node %p is still empty", an.thisNode)
 		return
 	}
-	if node.Obj == nil {
-		fmt.Print(prefix + "Node - nil")
+	if parent := an.thisNode.Parent; parent == nil {
+		/*
+			In case this node is the root node, create a new root node and make both original
+			root node and new sibling node leaves.
+		*/
+		originalRoot := an.RootNode
+		newRoot := &DocumentNode{Parent: nil, Leaves: make([]*DocumentNode, 0, 8)}
+		newRoot.Leaves = append(newRoot.Leaves, originalRoot)
+		newLeaf := &DocumentNode{Parent: newRoot, Leaves: make([]*DocumentNode, 0, 8)}
+		newRoot.Leaves = append(newRoot.Leaves, newLeaf)
+		an.RootNode = newRoot
+		an.thisNode = newLeaf
+		an.Debug.Printf("createNewSiblingNode: new root is %p, original root %p is now a leaf, new sibling is %p",
+			an.RootNode, originalRoot, newLeaf)
 	} else {
-		fmt.Print(prefix+"Node - ", node.Obj.(DebugPrint).Debug())
-	}
-
-	if len(node.Leaves) > 0 {
-		fmt.Println(" -->")
-		for _, leaf := range node.Leaves {
-			DebugNode(leaf, indent+2)
-		}
-	} else {
-		fmt.Println()
-	}
-}
-
-func Print(root *DocNode) {
-	fmt.Println(root.Obj.(DebugPrint).Debug())
-	fmt.Println(">>>")
-	for _, leaf := range root.Leaves {
-		Print(leaf)
-	}
-}
-
-func (an *Analyser) newSiblingIfNotNil() {
-	if an.this.Obj == nil {
-		fmt.Println("No new sibling because obj is nil")
-		return
-	}
-	if parent := an.this.Parent; parent == nil {
-		// root carries nothing
-		// create a leaf that was the root
-		rootAsLeaf := an.Root
-		an.Root = &DocNode{Parent: nil, Leaves: make([]*DocNode, 0, 8)}
-		an.Root.Leaves = append(an.Root.Leaves, rootAsLeaf)
-		newLeaf := &DocNode{Parent: an.Root, Leaves: make([]*DocNode, 0, 8)}
-		an.Root.Leaves = append(an.Root.Leaves, newLeaf)
-		an.this = newLeaf
-		fmt.Println("New sibling for root has been created")
-	} else {
-		newLeaf := &DocNode{Parent: parent, Leaves: make([]*DocNode, 0, 8)}
+		newLeaf := &DocumentNode{Parent: parent, Leaves: make([]*DocumentNode, 0, 8)}
 		parent.Leaves = append(parent.Leaves, newLeaf)
-		an.this = newLeaf
-		fmt.Println("New sibling for non-root node")
+		an.thisNode = newLeaf
+		an.Debug.Printf("createNewSiblingNode: new sibling is %p", newLeaf)
 	}
 }
 
-func (an *Analyser) newLeaf() {
-	newLeaf := &DocNode{Parent: an.this, Leaves: make([]*DocNode, 0, 8)}
-	an.this.Leaves = append(an.this.Leaves, newLeaf)
-	fmt.Println("New leaf is created, this is ", an.this, ", new leaf is ", newLeaf)
-	an.this = newLeaf
-}
-
-func (an *Analyser) BeginComment(style string) {
-	if an.commentCtx == nil {
-		an.commentCtx = new(Comment)
-		an.commentCtx.CommentStyle = style
-		fmt.Println("New comment is created")
-	}
-}
-
-func (an *Analyser) EnterComment(style string) {
-	an.EnterStmt()
-	if an.commentCtx == nil {
-		an.BeginComment(style)
-	} else {
-		fmt.Println("EnterComment does nothing")
-	}
-}
-
-func (an *Analyser) EndComment() {
-	if an.commentCtx == nil {
-		fmt.Println("EndComment does nothing")
-		return
-	} else {
-		fmt.Println("EndComment will store content")
-		an.storeContent()
-		an.EnterStmt()
-		an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.commentCtx)
-	}
-	an.commentCtx = nil
-}
-
-func (an *Analyser) NewVal() {
-	if an.valCtx == nil {
-		fmt.Println("New val is created")
-		an.valCtx = new(Val)
-	}
-}
-
-func (an *Analyser) EnterVal() {
-	an.EnterStmt()
-	if an.valCtx == nil {
-		an.NewVal()
-	} else {
-		fmt.Println("EnterVal does nothing")
-	}
-}
-
-func (an *Analyser) EndVal() {
-	if an.valCtx == nil {
-		fmt.Println("EndVal does nothing")
-		return
-	} else {
-		fmt.Println("EndVal will store content")
-		an.storeContent()
-		an.EnterStmt()
-		an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.valCtx)
-	}
-	an.valCtx = nil
-}
-
-func (an *Analyser) NewStmt() {
-	if an.stmtCtx == nil {
-		fmt.Println("New stmt will be created")
-		an.newSiblingIfNotNil()
-		an.stmtCtx = new(Stmt)
-		an.this.Obj = an.stmtCtx
-		fmt.Println("New stmt is created")
-	}
-}
-
-func (an *Analyser) EnterStmt() {
-	if an.stmtCtx == nil {
-		an.NewStmt()
-	} else {
-		fmt.Println("EnterStmt does nothing")
+// Save an object into the current node and create a new sibling.
+func (an *Analyser) saveNodeAndCreateSibling(saveObj interface{}) {
+	if saveObj == nil {
+		an.Debug.Printf("saveNodeAndCreateSibling: doing nothing because object to save is nil")
 		return
 	}
+	if an.thisNode.Obj == nil {
+		an.thisNode.Obj = saveObj
+	} else {
+		// Must not overwrite the object in this node
+		an.createSiblingNode()
+		an.thisNode.Obj = saveObj
+	}
+	an.createSiblingNode()
 }
 
-func (an *Analyser) EndStmt(style string) {
-	an.storeContent()
-	an.EndComment()
-	an.EndVal()
-	if an.ignoreNewStmtOnce {
-		an.ignoreNewStmtOnce = false
-		fmt.Println("EndStmt does nothing because flag is true")
+// Create a new leaf node and move reference to the new leaf.
+func (an *Analyser) createNewLeaf() {
+	newLeaf := &DocumentNode{Parent: an.thisNode, Leaves: make([]*DocumentNode, 0, 8)}
+	an.thisNode.Leaves = append(an.thisNode.Leaves, newLeaf)
+	an.Debug.Printf("createNewLeaf: %p now has a new leaf %p", an.thisNode, newLeaf)
+	an.thisNode = newLeaf
+}
+
+// If comment context is nil, assign the context a new comment entity.
+func (an *Analyser) newComment(commentStyle string) {
+	if an.commentContext == nil {
+		an.commentContext = new(Comment)
+		an.commentContext.CommentStyle = commentStyle
+		an.Debug.Printf("newComment: context comment is now assigned %p", an.commentContext)
+	}
+}
+
+// If comment context is not nil, move the comment into statement context and clear comment context.
+func (an *Analyser) endComment() {
+	if an.commentContext == nil {
 		return
 	}
-	if an.stmtCtx == nil {
-		if style != "" {
-			fmt.Println("EndStmt makes an empty statement with only an ending")
-			an.newSiblingIfNotNil()
-			an.this.Obj = &Stmt{End: style}
-			an.newSiblingIfNotNil()
+	an.savePendingTextOrComment()
+	an.newStatement()
+	an.statementContext.Pieces = append(an.statementContext.Pieces, an.commentContext)
+	an.Debug.Printf("endComment: comment %p is now a piece of statement %p", an.commentContext, an.statementContext)
+	an.commentContext = nil
+}
+
+// If text context is nil, assign the context a new text entity.
+func (an *Analyser) newText() {
+	if an.textContext == nil {
+		an.textContext = new(Text)
+		an.Debug.Printf("newText: context text is now assigned %p", an.textContext)
+	}
+}
+
+// If text context is not nil, move the text into statement context and clear text context.
+func (an *Analyser) endText() {
+	if an.textContext == nil {
+		return
+	}
+	an.savePendingTextOrComment()
+	an.newStatement()
+	an.statementContext.Pieces = append(an.statementContext.Pieces, an.textContext)
+	an.Debug.Printf("endText: text %p is now a piece of statement %p", an.textContext, an.statementContext)
+	an.textContext = nil
+}
+
+// If statement context is nil, assign the context a new statement entity.
+func (an *Analyser) newStatement() {
+	if an.statementContext == nil {
+		an.statementContext = new(Statement)
+		an.thisNode.Obj = an.statementContext
+		an.saveNodeAndCreateSibling(an.statementContext)
+		fmt.Println("newStatement: context statement is now assigned %p", an.statementContext)
+	}
+}
+
+// Move context text and comment into context statement (create new statement if necessary), and clear context statement.
+func (an *Analyser) endStatement(ending string) {
+	// Organise context objects
+	an.savePendingTextOrComment()
+	an.endComment()
+	an.endText()
+	if an.ignoreNewStatementOnce {
+		an.Debug.Printf("endStatement: not saving this node because ignoreNewStatementOnce is set")
+		an.ignoreNewStatementOnce = false
+		return
+	}
+	if an.statementContext == nil && an.commentContext == nil && an.textContext == nil {
+		an.Debug.Printf("endStatement: nothing to save")
+		if ending != "" {
+			an.Debug.Printf("endStatement: saving statement ending in a new statement")
+			an.saveNodeAndCreateSibling(&Statement{Ending: ending})
 		}
 		return
-	} else {
-		an.stmtCtx.End = style
-		if an.commentCtx != nil {
-			an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.commentCtx)
-		}
-		if an.valCtx != nil {
-			an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, an.valCtx)
-		}
-		an.this.Obj = an.stmtCtx
-		an.newSiblingIfNotNil()
 	}
-	an.commentCtx = nil
-	an.valCtx = nil
-	an.stmtCtx = nil
+	an.statementContext.Ending = ending
+	if an.commentContext != nil {
+		an.statementContext.Pieces = append(an.statementContext.Pieces, an.commentContext)
+	}
+	if an.textContext != nil {
+		an.statementContext.Pieces = append(an.statementContext.Pieces, an.textContext)
+	}
+	an.saveNodeAndCreateSibling(an.statementContext)
+
+	an.commentContext = nil
+	an.textContext = nil
+	an.statementContext = nil
 }
 
-func (an *Analyser) storeContent() {
-	if an.here-an.lastBranch > 0 {
-		missedContent := an.text[an.lastBranch:an.here]
-		if an.commentCtx != nil {
+func (an *Analyser) savePendingTextOrComment() {
+	if an.here-an.lastBranchPosition > 0 {
+		missedContent := an.textInput[an.lastBranchPosition:an.here]
+		if an.commentContext != nil {
 			fmt.Println("missed content", missedContent, "will be stored in comment")
-			an.commentCtx.Content += missedContent
+			an.commentContext.Content += missedContent
 		} else {
 			fmt.Println("missed content", missedContent, "will be stored in val")
-			an.EnterVal()
-			an.valCtx.Text += missedContent
+			an.newText()
+			an.textContext.Text += missedContent
 		}
-		an.lastBranch = an.here
+		an.lastBranchPosition = an.here
 	} else {
 		fmt.Println("storeContent does nothing")
 	}
 }
 func (an *Analyser) storeSpaces(spaces string) {
-	an.storeContent()
+	an.savePendingTextOrComment()
 	fmt.Println("About to store space '" + spaces + "'")
-	if an.ignoreNewStmtOnce {
+	if an.ignoreNewStatementOnce {
 		fmt.Println("Spaces are going into new val")
-		an.EndVal()
-		an.NewVal()
-		an.valCtx.TrailingSpaces += spaces
-		an.EndVal()
-	} else if an.commentCtx != nil {
+		an.endText()
+		an.newText()
+		an.textContext.TrailingSpaces += spaces
+		an.endText()
+	} else if an.commentContext != nil {
 		fmt.Println("Spaces are going into context comment")
-		an.commentCtx.Content += spaces
-	} else if an.valCtx != nil {
+		an.commentContext.Content += spaces
+	} else if an.textContext != nil {
 		fmt.Println("Spaces are going into value trailing spaces")
-		an.valCtx.TrailingSpaces = spaces
-		an.EndVal()
-	} else if an.stmtCtx != nil {
+		an.textContext.TrailingSpaces = spaces
+		an.endText()
+	} else if an.statementContext != nil {
 		fmt.Println("Spaces set indent")
-		an.stmtCtx.Indent += spaces
-	} else if an.stmtCtx == nil {
+		an.statementContext.Indent += spaces
+	} else if an.statementContext == nil {
 		fmt.Println("Spaces set indent and makes a new statement")
-		an.EnterStmt()
-		an.stmtCtx.Indent += spaces
+		an.newStatement()
+		an.statementContext.Indent += spaces
 	} else {
 		fmt.Println("Spaces have no where to go")
 	}
 }
 
 func (an *Analyser) ContinueStmt(style string) {
-	if an.valCtx != nil && an.valCtx.QuoteStyle != "" {
-		an.valCtx.Text += style
+	if an.textContext != nil && an.textContext.QuoteStyle != "" {
+		an.textContext.Text += style
 		fmt.Println("Continue statement mark goes into value")
 		return
 	}
-	an.storeContent()
-	an.EndComment()
-	an.EndVal()
-	an.EnterStmt()
-	an.stmtCtx.Pieces = append(an.stmtCtx.Pieces, &StmtContinue{Style: style})
-	an.ignoreNewStmtOnce = true
+	an.savePendingTextOrComment()
+	an.endComment()
+	an.endText()
+	an.newStatement()
+	an.statementContext.Pieces = append(an.statementContext.Pieces, &StatementContinue{Style: style})
+	an.ignoreNewStatementOnce = true
 	fmt.Println("Continue statement flag is set")
 }
 
 func (an *Analyser) NewSection() {
-	an.EndStmt("")
-	fmt.Println("NewSection from here:", an.this)
-	if an.this == an.Root {
-		an.newLeaf()
+	an.endStatement("")
+	fmt.Println("NewSection from here:", an.thisNode)
+	if an.thisNode == an.RootNode {
+		an.createNewLeaf()
 	} else {
-		an.newSiblingIfNotNil()
+		an.createSiblingNode()
 	}
-	an.this.Obj = new(Sect)
-	an.newLeaf()
+	an.thisNode.Obj = new(Section)
+	an.createNewLeaf()
 }
 
 func (an *Analyser) IsSect() bool {
-	if an.this.Parent == nil || an.this.Parent.Obj == nil {
+	if an.thisNode.Parent == nil || an.thisNode.Parent.Obj == nil {
 		return false
-	} else if _, isSect := an.this.Parent.Obj.(*Sect); isSect {
+	} else if _, isSect := an.thisNode.Parent.Obj.(*Section); isSect {
 		return true
 	} else {
 		return false
@@ -451,18 +252,18 @@ func (an *Analyser) IsSect() bool {
 }
 
 func (an *Analyser) FindThisLeaf() int {
-	if an.this.Parent == nil {
+	if an.thisNode.Parent == nil {
 		return -1
 	}
-	for i, leaf := range an.this.Parent.Leaves {
-		if leaf == an.this {
+	for i, leaf := range an.thisNode.Parent.Leaves {
+		if leaf == an.thisNode {
 			return i
 		}
 	}
 	return -1
 }
 
-func (an *Analyser) GetPreviousLeaf() *Stmt {
+func (an *Analyser) GetPreviousLeaf() *Statement {
 	thisLeaf := an.FindThisLeaf()
 	if thisLeaf == -1 {
 		return nil
@@ -470,8 +271,8 @@ func (an *Analyser) GetPreviousLeaf() *Stmt {
 	if thisLeaf == 0 {
 		return nil
 	}
-	prevLeaf := an.this.Parent.Leaves[thisLeaf-1]
-	if stmt, ok := prevLeaf.Obj.(*Stmt); ok {
+	prevLeaf := an.thisNode.Parent.Leaves[thisLeaf-1]
+	if stmt, ok := prevLeaf.Obj.(*Statement); ok {
 		return stmt
 	}
 	return nil
@@ -482,41 +283,41 @@ func (an *Analyser) EndSection() {
 		fmt.Println("this is not a section but it ends here, why?")
 	} else {
 		fmt.Println("section ends here, saving the latest statement")
-		an.EndStmt("")
-		an.this = an.this.Parent
+		an.endStatement("")
+		an.thisNode = an.thisNode.Parent
 		// an.this is now the parent - section object
 		// Remove the last leaf if it holds no object
-		if an.this.Leaves[len(an.this.Leaves)-1].Obj == nil {
-			an.this.Leaves = an.this.Leaves[:len(an.this.Leaves)-1]
+		if an.thisNode.Leaves[len(an.thisNode.Leaves)-1].Obj == nil {
+			an.thisNode.Leaves = an.thisNode.Leaves[:len(an.thisNode.Leaves)-1]
 		}
 		minNumLeaves := 0
-		if an.Style.BeginSectWithStmt {
-			if len(an.Style.SectBeginSuffix) == 0 {
-				sect.Begin = an.GetPreviousLeaf()
+		if an.Config.BeginSectionWithAStatement {
+			if len(an.Config.SectionBeginningSuffixes) == 0 {
+				sect.BeginningStatement = an.GetPreviousLeaf()
 			} else {
-				firstLeaf := an.this.Leaves[0]
-				if stmt, ok := firstLeaf.Obj.(*Stmt); ok {
+				firstLeaf := an.thisNode.Leaves[0]
+				if stmt, ok := firstLeaf.Obj.(*Statement); ok {
 					fmt.Println("successfully set sect.begin")
-					an.this.Leaves = an.this.Leaves[1:]
-					sect.Begin = stmt
+					an.thisNode.Leaves = an.thisNode.Leaves[1:]
+					sect.BeginningStatement = stmt
 					minNumLeaves++
 				}
 			}
 		}
-		if an.Style.EndSectWithStmt {
-			if len(an.Style.SectEndSuffix) > 0 {
-				if len(an.this.Leaves) > minNumLeaves {
-					lastLeaf := an.this.Leaves[len(an.this.Leaves)-1]
-					if stmt, ok := lastLeaf.Obj.(*Stmt); ok {
+		if an.Config.EndSectionWithAStatement {
+			if len(an.Config.SectionEndingSuffixes) > 0 {
+				if len(an.thisNode.Leaves) > minNumLeaves {
+					lastLeaf := an.thisNode.Leaves[len(an.thisNode.Leaves)-1]
+					if stmt, ok := lastLeaf.Obj.(*Statement); ok {
 						fmt.Println("successfully set sect.end")
-						an.this.Leaves = an.this.Leaves[0 : len(an.this.Leaves)-1]
-						sect.End = stmt
+						an.thisNode.Leaves = an.thisNode.Leaves[0 : len(an.thisNode.Leaves)-1]
+						sect.EndingStatement = stmt
 					}
 				}
 			}
 		}
 		fmt.Println("Section has ended")
-		an.newSiblingIfNotNil()
+		an.createSiblingNode()
 	}
 }
 
@@ -531,20 +332,20 @@ const (
 
 type SectionState int
 
-func (an *Analyser) GetSectionState() (SectionState, *Sect) {
+func (an *Analyser) GetSectionState() (SectionState, *Section) {
 	if !an.IsSect() {
 		fmt.Println("not in section!!")
 		return SECT_STATE_NONE, nil
 	}
-	sect := an.this.Parent.Obj.(*Sect)
-	switch an.Style.SectMatchStyle {
-	case SECT_MATCH_BEGIN_PREFIX:
+	sect := an.thisNode.Parent.Obj.(*Section)
+	switch an.Config.SectionMatchMechanism {
+	case SECTION_MATCH_FLAT_SINGLE_ANCHOR:
 		if sect.BeginPrefix == "" {
 			return SECT_STATE_BEFORE_BEGIN, sect
 		} else {
 			return SECT_STATE_END_NOW, sect
 		}
-	case SECT_MATCH_BEGIN_PREFIX_SUFFIX:
+	case SECTION_MATCH_FLAT_DOUBLE_ANCHOR:
 		if sect.BeginPrefix == "" {
 			return SECT_STATE_BEFORE_BEGIN, sect
 		} else if sect.BeginSuffix == "" {
@@ -552,7 +353,7 @@ func (an *Analyser) GetSectionState() (SectionState, *Sect) {
 		} else {
 			return SECT_STATE_END_NOW, sect
 		}
-	case SECT_MATCH_BEGIN_PREFIX_END_PREFIX:
+	case SECTION_MATCH_NESTED_DOUBLE_ANCHOR:
 		if sect.BeginPrefix == "" {
 			return SECT_STATE_BEFORE_BEGIN, sect
 		} else if sect.EndPrefix == "" {
@@ -560,7 +361,7 @@ func (an *Analyser) GetSectionState() (SectionState, *Sect) {
 		} else {
 			return SECT_STATE_END_NOW, sect
 		}
-	case SECT_MATCH_ALL:
+	case SECTION_MATCH_NESTED_QUAD_ANCHOR:
 		if sect.BeginPrefix == "" {
 			return SECT_STATE_BEFORE_BEGIN, sect
 		} else if sect.BeginSuffix == "" {
@@ -578,75 +379,75 @@ func (an *Analyser) GetSectionState() (SectionState, *Sect) {
 }
 
 func (an *Analyser) BeginSectionSetPrefix(style string) {
-	an.EndStmt("")
+	an.endStatement("")
 	state, sect := an.GetSectionState()
 	if state == SECT_STATE_NONE {
 		fmt.Println("BeginSectionSetPrefix: create new first-level section")
 		an.NewSection()
-		fmt.Println(an.this.Parent, an.this)
-		an.this.Parent.Obj.(*Sect).BeginPrefix = style
-		an.storeContent()
+		fmt.Println(an.thisNode.Parent, an.thisNode)
+		an.thisNode.Parent.Obj.(*Section).BeginPrefix = style
+		an.savePendingTextOrComment()
 	} else if state == SECT_STATE_END_NOW {
 		fmt.Println("BeginSectionSetPrefix: End now")
 		sect.BeginPrefix = style
-		an.storeContent()
+		an.savePendingTextOrComment()
 		an.EndSection()
 	} else {
 		fmt.Println("BeginSectionSetPrefix: create new sub section")
 		an.NewSection()
-		fmt.Println(an.this.Parent, an.this)
-		an.this.Parent.Obj.(*Sect).BeginPrefix = style
-		an.storeContent()
+		fmt.Println(an.thisNode.Parent, an.thisNode)
+		an.thisNode.Parent.Obj.(*Section).BeginPrefix = style
+		an.savePendingTextOrComment()
 	}
 }
 
 func (an *Analyser) BeginSectionSetSuffix(style string) {
-	an.EndStmt("")
+	an.endStatement("")
 	if state, sect := an.GetSectionState(); state == SECT_STATE_END_NOW {
 		fmt.Println("BeginSectionSetSuffix: set style and end")
 		sect.BeginSuffix = style
-		an.storeContent()
+		an.savePendingTextOrComment()
 		an.EndSection()
 	} else if state < SECT_STATE_BEGIN_PREFIX || state > SECT_STATE_BEGIN_SUFFIX {
 		fmt.Println("BeginSectionSetSuffix: no match, store content")
-		an.storeContent()
+		an.savePendingTextOrComment()
 	} else {
 		fmt.Println("BeginSectionSetSuffix: only set style")
 		sect.BeginSuffix = style
-		an.storeContent()
+		an.savePendingTextOrComment()
 	}
 }
 
 func (an *Analyser) EndSectionSetPrefix(style string) {
-	an.EndStmt("")
+	an.endStatement("")
 	if state, sect := an.GetSectionState(); state == SECT_STATE_END_NOW {
 		fmt.Println("EndSectionSetPrefix: set style and end")
 		sect.EndPrefix = style
-		an.storeContent()
+		an.savePendingTextOrComment()
 		an.EndSection()
 	} else if state < SECT_STATE_BEGIN_SUFFIX || state > SECT_STATE_END_PREFIX {
 		fmt.Println("EndSectionSetPrefix: no match, store content")
-		an.storeContent()
+		an.savePendingTextOrComment()
 	} else {
 		fmt.Println("EndSectionSetPrefix: only set style")
 		sect.EndPrefix = style
-		an.storeContent()
+		an.savePendingTextOrComment()
 	}
 }
 
 func (an *Analyser) EndSectionSetSuffix(style string) {
-	an.EndStmt("")
+	an.endStatement("")
 	if state, sect := an.GetSectionState(); state >= SECT_STATE_END_PREFIX {
 		fmt.Println("EndSectionSetSuffix: set style and end")
 		sect.EndSuffix = style
-		an.storeContent()
+		an.savePendingTextOrComment()
 		an.EndSection()
-	} else if state < SECT_STATE_END_PREFIX && an.Style.AmbiguousSectionSuffix {
+	} else if state < SECT_STATE_END_PREFIX && an.Config.AmbiguousSectionSuffix {
 		fmt.Println("EndSectionSetSuffix: ambiguous suffix")
 		an.BeginSectionSetSuffix(style)
 	} else {
 		fmt.Println("EndSectionSetSuffix: only set style")
 		sect.EndSuffix = style
-		an.storeContent()
+		an.savePendingTextOrComment()
 	}
 }
