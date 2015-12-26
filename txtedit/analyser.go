@@ -35,9 +35,9 @@ func NewAnalyser(textInput string, config *AnalyserConfig, debugger AnalyzerDebu
 }
 
 // Create a new sibling node if the current node is already holding an object. Move reference to the new sibling.
-func (an *Analyser) createSiblingNode() {
+func (an *Analyser) createSiblingNodeIfNotNil() {
 	if an.thisNode.Obj == nil {
-		an.debug.Printf("createSiblingNode: does nothing when this node %p is still empty", an.thisNode)
+		an.debug.Printf("createSiblingNodeIfNotNil: does nothing when this node %p is still empty", an.thisNode)
 		return
 	}
 	if parent := an.thisNode.Parent; parent == nil {
@@ -52,13 +52,13 @@ func (an *Analyser) createSiblingNode() {
 		newRoot.Leaves = append(newRoot.Leaves, newLeaf)
 		an.rootNode = newRoot
 		an.thisNode = newLeaf
-		an.debug.Printf("createSiblingNode: new root is %p, original root %p is now a leaf, new sibling is %p",
+		an.debug.Printf("createSiblingNodeIfNotNil: new root is %p, original root %p is now a leaf, new sibling is %p",
 			an.rootNode, originalRoot, newLeaf)
 	} else {
 		newLeaf := &DocumentNode{Parent: parent, Leaves: make([]*DocumentNode, 0, 8)}
 		parent.Leaves = append(parent.Leaves, newLeaf)
 		an.thisNode = newLeaf
-		an.debug.Printf("createSiblingNode: new sibling is %p", newLeaf)
+		an.debug.Printf("createSiblingNodeIfNotNil: new sibling is %p", newLeaf)
 	}
 }
 
@@ -66,36 +66,35 @@ func (an *Analyser) createSiblingNode() {
 If the current node already holds an object, then create a new sibling.
 Save an object into the current node.
 */
-func (an *Analyser) saveNodeAndCreateSibling(saveObj interface{}) {
-	if saveObj == nil {
-		an.debug.Printf("saveNodeAndCreateSibling: does nothing when object to save is nil")
+func (an *Analyser) createDocumentSiblingNode(nodeContent interface{}) {
+	if nodeContent == nil {
+		an.debug.Printf("createDocumentSiblingNode: does nothing when node content is nil")
 		return
 	}
 	if an.thisNode.Obj == nil {
-		fmt.Printf("assign %+v to %p\n", saveObj, an.thisNode)
-		an.thisNode.Obj = saveObj
+		an.thisNode.Obj = nodeContent
 	} else {
-		fmt.Printf("create sibling and assign %p to %p\n", saveObj, an.thisNode)
 		// Must not overwrite the object in this node
-		an.createSiblingNode()
-		an.thisNode.Obj = saveObj
+		an.createSiblingNodeIfNotNil()
+		an.debug.Printf("createDocumentSiblingNode: hold in node %p content %p", an.thisNode, nodeContent)
+		an.thisNode.Obj = nodeContent
 	}
 }
 
 // Create a new leaf node and move reference to the new leaf.
-func (an *Analyser) createNewLeaf() {
+func (an *Analyser) createLeaf() {
 	newLeaf := &DocumentNode{Parent: an.thisNode, Leaves: make([]*DocumentNode, 0, 8)}
 	an.thisNode.Leaves = append(an.thisNode.Leaves, newLeaf)
-	an.debug.Printf("createNewLeaf: %p now has a new leaf %p", an.thisNode, newLeaf)
+	an.debug.Printf("createLeaf: %p now has a new leaf %p", an.thisNode, newLeaf)
 	an.thisNode = newLeaf
 }
 
 // If comment context is nil, assign the context a new comment entity.
-func (an *Analyser) newComment(commentStyle string) {
+func (an *Analyser) createCommentIfNil(commentStyle string) {
 	if an.commentContext == nil {
 		an.commentContext = new(Comment)
 		an.commentContext.CommentStyle = commentStyle
-		an.debug.Printf("newComment: context comment is assigned to %p", an.commentContext)
+		an.debug.Printf("createCommentIfNil: context comment is assigned to %p", an.commentContext)
 	}
 }
 
@@ -104,18 +103,18 @@ func (an *Analyser) endComment() {
 	if an.commentContext == nil {
 		return
 	}
-	an.savePendingTextOrComment()
-	an.newStatement()
+	an.saveMissedCharacters()
+	an.createStatementIfNil()
 	an.statementContext.Pieces = append(an.statementContext.Pieces, an.commentContext)
 	an.debug.Printf("endComment: comment %p is now a piece of statement %p", an.commentContext, an.statementContext)
 	an.commentContext = nil
 }
 
 // If text context is nil, assign the context a new text entity.
-func (an *Analyser) newText() {
+func (an *Analyser) createTextIfNil() {
 	if an.textContext == nil {
 		an.textContext = new(Text)
-		an.debug.Printf("newText: context text is assigned to %p", an.textContext)
+		an.debug.Printf("createTextIfNil: context text is assigned to %p", an.textContext)
 	}
 }
 
@@ -124,26 +123,26 @@ func (an *Analyser) endText() {
 	if an.textContext == nil {
 		return
 	}
-	an.savePendingTextOrComment()
-	an.newStatement()
+	an.saveMissedCharacters()
+	an.createStatementIfNil()
 	an.statementContext.Pieces = append(an.statementContext.Pieces, an.textContext)
 	an.debug.Printf("endText: text %p is now a piece of statement %p", an.textContext, an.statementContext)
 	an.textContext = nil
 }
 
 // If statement context is nil, assign the context a new statement entity.
-func (an *Analyser) newStatement() {
+func (an *Analyser) createStatementIfNil() {
 	if an.statementContext == nil {
 		an.statementContext = new(Statement)
-		an.saveNodeAndCreateSibling(an.statementContext)
-		fmt.Println("newStatement: context statement is assigned to %p", an.statementContext)
+		an.createDocumentSiblingNode(an.statementContext)
+		fmt.Println("createStatementIfNil: context statement is assigned to %p", an.statementContext)
 	}
 }
 
 // Move context text and comment into context statement (create new statement if necessary), and clear context statement.
 func (an *Analyser) endStatement(ending string) {
 	// Organise context objects
-	an.savePendingTextOrComment()
+	an.saveMissedCharacters()
 	an.endComment()
 	an.endText()
 	if an.ignoreNewStatementOnce {
@@ -155,10 +154,11 @@ func (an *Analyser) endStatement(ending string) {
 		an.debug.Printf("endStatement: all contexts are nil, nothing to save")
 		if ending != "" {
 			an.debug.Printf("endStatement: save statement ending in a new statement")
-			an.saveNodeAndCreateSibling(&Statement{Ending: ending})
+			an.createDocumentSiblingNode(&Statement{Ending: ending})
 		}
 		return
 	}
+	// Save the remaining text/comment piece
 	an.statementContext.Ending = ending
 	if an.commentContext != nil {
 		an.statementContext.Pieces = append(an.statementContext.Pieces, an.commentContext)
@@ -172,47 +172,52 @@ func (an *Analyser) endStatement(ending string) {
 	an.statementContext = nil
 }
 
-func (an *Analyser) savePendingTextOrComment() {
+// Save the text or comment text from the last branched location till here.
+func (an *Analyser) saveMissedCharacters() {
 	if an.here-an.lastBranchPosition > 0 {
 		missedContent := an.textInput[an.lastBranchPosition:an.here]
 		if an.commentContext != nil {
-			fmt.Println("missed content", missedContent, "will be stored in comment")
+			an.debug.Printf("saveMissedText: missed content '%s' is stored in comment %p",
+				missedContent, an.commentContext)
 			an.commentContext.Content += missedContent
 		} else {
-			fmt.Println("missed content", missedContent, "will be stored in val")
-			an.newText()
+			an.createTextIfNil()
+			an.debug.Printf("saveMissedText: missed content '%s' is stored in text %p",
+				missedContent, an.textContext)
 			an.textContext.Text += missedContent
 		}
 		an.lastBranchPosition = an.here
-	} else {
-		fmt.Println("storeContent does nothing")
 	}
 }
-func (an *Analyser) storeSpaces(spaces string) {
-	an.savePendingTextOrComment()
-	fmt.Println("About to store space '" + spaces + "'")
+
+// Place the space characters inside statement indentation or text entity's trailing spaces.
+func (an *Analyser) saveSpaces(spaces string) {
+	an.saveMissedCharacters()
+	length := len(spaces)
 	if an.ignoreNewStatementOnce {
-		fmt.Println("Spaces are going into new val")
 		an.endText()
-		an.newText()
+		an.createTextIfNil()
+		an.debug.Printf("saveSpaces: ignoreNewStatementOnce is true, %d spaces go into text %p", length, an.textContext)
 		an.textContext.TrailingSpaces += spaces
 		an.endText()
 	} else if an.commentContext != nil {
-		fmt.Println("Spaces are going into context comment")
+		an.debug.Printf("saveSpaces: %d spaces go into comment %p", length, an.commentContext)
 		an.commentContext.Content += spaces
 	} else if an.textContext != nil {
-		fmt.Println("Spaces are going into value trailing spaces")
+		an.debug.Printf("saveSpaces: %d spaces go into text %p", length, an.textContext)
 		an.textContext.TrailingSpaces = spaces
 		an.endText()
 	} else if an.statementContext != nil {
-		fmt.Println("Spaces set indent")
+		an.debug.Printf("saveSpaces: %d spaces go into indentation of context statement %p",
+			length, an.statementContext)
 		an.statementContext.Indent += spaces
 	} else if an.statementContext == nil {
-		fmt.Println("Spaces set indent and makes a new statement")
-		an.newStatement()
+		an.createStatementIfNil()
+		an.debug.Printf("saveSpaces: %d spaces go into indentation of a new statement %p",
+			length, an.statementContext)
 		an.statementContext.Indent += spaces
 	} else {
-		fmt.Println("Spaces have no where to go")
+		an.debug.Printf("saveSpaces: %d spaces have nowhere to go")
 	}
 }
 
@@ -222,10 +227,10 @@ func (an *Analyser) ContinueStmt(style string) {
 		fmt.Println("Continue statement mark goes into value")
 		return
 	}
-	an.savePendingTextOrComment()
+	an.saveMissedCharacters()
 	an.endComment()
 	an.endText()
-	an.newStatement()
+	an.createStatementIfNil()
 	an.statementContext.Pieces = append(an.statementContext.Pieces, &StatementContinue{Style: style})
 	an.ignoreNewStatementOnce = true
 	fmt.Println("Continue statement flag is set")
@@ -236,13 +241,13 @@ func (an *Analyser) newSection() {
 	newSection := new(Section)
 	if an.thisNode == an.rootNode {
 		an.debug.Printf("newSection: create new section from root node %p", an.thisNode)
-		an.createNewLeaf()
+		an.createLeaf()
 		an.thisNode.Obj = new(Section)
 	} else {
 		an.debug.Printf("newSection: create new section from node %p", an.thisNode)
-		an.saveNodeAndCreateSibling(newSection)
+		an.createDocumentSiblingNode(newSection)
 	}
-	an.createNewLeaf()
+	an.createLeaf()
 }
 
 func (an *Analyser) IsSect() bool {
@@ -321,7 +326,7 @@ func (an *Analyser) EndSection() {
 			}
 		}
 		fmt.Println("Section has ended")
-		an.createSiblingNode()
+		an.createSiblingNodeIfNotNil()
 	}
 	// Remember - section object was placed in the document node tree when it was created
 }
@@ -391,18 +396,18 @@ func (an *Analyser) BeginSectionSetPrefix(style string) {
 		an.newSection()
 		fmt.Println(an.thisNode.Parent, an.thisNode)
 		an.thisNode.Parent.Obj.(*Section).BeginPrefix = style
-		an.savePendingTextOrComment()
+		an.saveMissedCharacters()
 	} else if state == SECT_STATE_END_NOW {
 		fmt.Println("BeginSectionSetPrefix: End now")
 		sect.BeginPrefix = style
-		an.savePendingTextOrComment()
+		an.saveMissedCharacters()
 		an.EndSection()
 	} else {
 		fmt.Println("BeginSectionSetPrefix: create new sub section")
 		an.newSection()
 		fmt.Println(an.thisNode.Parent, an.thisNode)
 		an.thisNode.Parent.Obj.(*Section).BeginPrefix = style
-		an.savePendingTextOrComment()
+		an.saveMissedCharacters()
 	}
 }
 
@@ -411,15 +416,15 @@ func (an *Analyser) BeginSectionSetSuffix(style string) {
 	if state, sect := an.GetSectionState(); state == SECT_STATE_END_NOW {
 		fmt.Println("BeginSectionSetSuffix: set style and end")
 		sect.BeginSuffix = style
-		an.savePendingTextOrComment()
+		an.saveMissedCharacters()
 		an.EndSection()
 	} else if state < SECT_STATE_BEGIN_PREFIX || state > SECT_STATE_BEGIN_SUFFIX {
 		fmt.Println("BeginSectionSetSuffix: no match, store content")
-		an.savePendingTextOrComment()
+		an.saveMissedCharacters()
 	} else {
 		fmt.Println("BeginSectionSetSuffix: only set style")
 		sect.BeginSuffix = style
-		an.savePendingTextOrComment()
+		an.saveMissedCharacters()
 	}
 }
 
@@ -428,15 +433,15 @@ func (an *Analyser) EndSectionSetPrefix(style string) {
 	if state, sect := an.GetSectionState(); state == SECT_STATE_END_NOW {
 		fmt.Println("EndSectionSetPrefix: set style and end")
 		sect.EndPrefix = style
-		an.savePendingTextOrComment()
+		an.saveMissedCharacters()
 		an.EndSection()
 	} else if state < SECT_STATE_BEGIN_SUFFIX || state > SECT_STATE_END_PREFIX {
 		fmt.Println("EndSectionSetPrefix: no match, store content")
-		an.savePendingTextOrComment()
+		an.saveMissedCharacters()
 	} else {
 		fmt.Println("EndSectionSetPrefix: only set style")
 		sect.EndPrefix = style
-		an.savePendingTextOrComment()
+		an.saveMissedCharacters()
 	}
 }
 
@@ -445,7 +450,7 @@ func (an *Analyser) EndSectionSetSuffix(style string) {
 	if state, sect := an.GetSectionState(); state >= SECT_STATE_END_PREFIX {
 		fmt.Println("EndSectionSetSuffix: set style and end")
 		sect.EndSuffix = style
-		an.savePendingTextOrComment()
+		an.saveMissedCharacters()
 		an.EndSection()
 	} else if state < SECT_STATE_END_PREFIX && an.config.AmbiguousSectionSuffix {
 		fmt.Println("EndSectionSetSuffix: ambiguous suffix")
@@ -453,6 +458,6 @@ func (an *Analyser) EndSectionSetSuffix(style string) {
 	} else {
 		fmt.Println("EndSectionSetSuffix: only set style")
 		sect.EndSuffix = style
-		an.savePendingTextOrComment()
+		an.saveMissedCharacters()
 	}
 }

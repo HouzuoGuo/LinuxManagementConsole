@@ -40,7 +40,7 @@ func (an *Analyser) SetQuote(style string) {
 		an.commentContext.Content += style
 		return
 	}
-	an.newText()
+	an.createTextIfNil()
 	if an.textContext.QuoteStyle == "" {
 		// Begin to quote
 		fmt.Println("quote begins here")
@@ -53,7 +53,7 @@ func (an *Analyser) SetQuote(style string) {
 		} else {
 			// Just content
 			fmt.Println("quote is content")
-			an.savePendingTextOrComment()
+			an.saveMissedCharacters()
 			an.textContext.Text += style
 		}
 	}
@@ -67,7 +67,7 @@ func (an *Analyser) Analyse() {
 		var style string
 		if style, adv = an.LookFor(an.config.CommentBeginningMarkers); adv > 0 {
 			fmt.Println("Comment: " + style)
-			an.newComment(style)
+			an.createCommentIfNil(style)
 			an.lastBranchPosition = an.here + adv
 		} else if style, adv = an.LookFor(an.config.TextQuoteStyle); adv > 0 {
 			fmt.Println("Quote: " + style)
@@ -75,7 +75,7 @@ func (an *Analyser) Analyse() {
 			an.lastBranchPosition = an.here + adv
 		} else if spaces, adv = an.LookForSpaces(); adv > 0 {
 			fmt.Println("Spaces: ", adv, spaces)
-			an.storeSpaces(spaces)
+			an.saveSpaces(spaces)
 			an.lastBranchPosition = an.here + adv
 		} else if style, adv = an.LookFor(an.config.StatementContinuationMarkers); adv > 0 {
 			fmt.Println("StmtContinue: " + style)
@@ -107,7 +107,7 @@ func (an *Analyser) Analyse() {
 		}
 	}
 	fmt.Println("Analyse finished", an.lastBranchPosition, an.here)
-	an.savePendingTextOrComment()
+	an.saveMissedCharacters()
 	fmt.Println("Analyse will end stmt for one last time")
 	an.endStatement("")
 }
