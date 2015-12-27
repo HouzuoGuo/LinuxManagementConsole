@@ -5,15 +5,15 @@ import "fmt"
 func (an *Analyser) LookFor(match []string) (string, int) {
 	for _, style := range match {
 		if len(style) == 1 {
-			if an.textInput[an.here] == style[0] {
+			if an.textInput[an.positionHere] == style[0] {
 				return style, 1
 			} else {
 				continue
 			}
 		} else {
-			if an.here+len(style) > len(an.textInput) {
+			if an.positionHere+len(style) > len(an.textInput) {
 				continue
-			} else if string(an.textInput[an.here:an.here+len(style)]) != style {
+			} else if string(an.textInput[an.positionHere:an.positionHere+len(style)]) != style {
 				continue
 			} else {
 				return style, len(style)
@@ -24,29 +24,29 @@ func (an *Analyser) LookFor(match []string) (string, int) {
 }
 
 func (an *Analyser) LookForSpaces() (string, int) {
-	pos := an.here
+	pos := an.positionHere
 	for ; pos < len(an.textInput); pos++ {
 		if an.textInput[pos] != ' ' && an.textInput[pos] != '\t' {
 			break
 		}
 	}
-	return an.textInput[an.here:pos], pos - an.here
+	return an.textInput[an.positionHere:pos], pos - an.positionHere
 }
 
 func (an *Analyser) SetQuote(style string) {
-	if an.commentContext != nil {
+	if an.contextComment != nil {
 		// Add quote into comment content
 		fmt.Println("adding quote into comment content")
-		an.commentContext.Content += style
+		an.contextComment.Content += style
 		return
 	}
 	an.createTextIfNil()
-	if an.textContext.QuoteStyle == "" {
+	if an.contextText.QuoteStyle == "" {
 		// Begin to quote
 		fmt.Println("quote begins here")
-		an.textContext.QuoteStyle = style
+		an.contextText.QuoteStyle = style
 	} else {
-		if an.textContext.QuoteStyle == style {
+		if an.contextText.QuoteStyle == style {
 			// Closing a quote
 			fmt.Println("quote ends here")
 			an.endText()
@@ -54,60 +54,56 @@ func (an *Analyser) SetQuote(style string) {
 			// Just content
 			fmt.Println("quote is content")
 			an.saveMissedCharacters()
-			an.textContext.Text += style
+			an.contextText.Text += style
 		}
 	}
 }
 
 func (an *Analyser) Analyse() {
-
-	var adv int
+	var advance int
 	var spaces string
-	for an.here = 0; an.here < len(an.textInput); an.here += adv {
+	for an.positionHere = 0; an.positionHere < len(an.textInput); an.positionHere += advance {
 		var style string
-		if style, adv = an.LookFor(an.config.CommentBeginningMarkers); adv > 0 {
+		if style, advance = an.LookFor(an.config.CommentBeginningMarkers); advance > 0 {
 			fmt.Println("Comment: " + style)
 			an.createCommentIfNil(style)
-			an.lastBranchPosition = an.here + adv
-		} else if style, adv = an.LookFor(an.config.TextQuoteStyle); adv > 0 {
+			an.positionLastBranch = an.positionHere + advance
+		} else if style, advance = an.LookFor(an.config.TextQuoteStyle); advance > 0 {
 			fmt.Println("Quote: " + style)
 			an.SetQuote(style)
-			an.lastBranchPosition = an.here + adv
-		} else if spaces, adv = an.LookForSpaces(); adv > 0 {
-			fmt.Println("Spaces: ", adv, spaces)
+			an.positionLastBranch = an.positionHere + advance
+		} else if spaces, advance = an.LookForSpaces(); advance > 0 {
+			fmt.Println("Spaces: ", advance, spaces)
 			an.saveSpaces(spaces)
-			an.lastBranchPosition = an.here + adv
-		} else if style, adv = an.LookFor(an.config.StatementContinuationMarkers); adv > 0 {
+			an.positionLastBranch = an.positionHere + advance
+		} else if style, advance = an.LookFor(an.config.StatementContinuationMarkers); advance > 0 {
 			fmt.Println("StmtContinue: " + style)
-			an.ContinueStmt(style)
-			an.lastBranchPosition = an.here + adv
-		} else if style, adv = an.LookFor(an.config.StatementEndingMarkers); adv > 0 {
+			an.continueStatement(style)
+			an.positionLastBranch = an.positionHere + advance
+		} else if style, advance = an.LookFor(an.config.StatementEndingMarkers); advance > 0 {
 			fmt.Println("StmtEnd: " + style)
 			an.endStatement(style)
-			an.lastBranchPosition = an.here + adv
-		} else if style, adv = an.LookFor(an.config.SectionEndingSuffixes); adv > 0 {
+			an.positionLastBranch = an.positionHere + advance
+		} else if style, advance = an.LookFor(an.config.SectionEndingSuffixes); advance > 0 {
 			fmt.Println("SectEndSuffix: " + style)
-			an.EndSectionSetSuffix(style)
-			an.lastBranchPosition = an.here + adv
-		} else if style, adv = an.LookFor(an.config.SectionEndingPrefixes); adv > 0 {
+			an.setSectionEndSuffix(style)
+			an.positionLastBranch = an.positionHere + advance
+		} else if style, advance = an.LookFor(an.config.SectionEndingPrefixes); advance > 0 {
 			fmt.Println("SectEndPrefix: " + style)
-			an.EndSectionSetPrefix(style)
-			an.lastBranchPosition = an.here + adv
-		} else if style, adv = an.LookFor(an.config.SectionBeginningSuffixes); adv > 0 {
+			an.setSectionEndPrefix(style)
+			an.positionLastBranch = an.positionHere + advance
+		} else if style, advance = an.LookFor(an.config.SectionBeginningSuffixes); advance > 0 {
 			fmt.Println("SectBeginSuffix: " + style)
-			an.BeginSectionSetSuffix(style)
-			an.lastBranchPosition = an.here + adv
-		} else if style, adv = an.LookFor(an.config.SectionBeginningPrefixes); adv > 0 {
+			an.setSectionBeginSuffix(style)
+			an.positionLastBranch = an.positionHere + advance
+		} else if style, advance = an.LookFor(an.config.SectionBeginningPrefixes); advance > 0 {
 			fmt.Println("SectBeginPrefix: " + style)
-			an.BeginSectionSetPrefix(style)
-			an.lastBranchPosition = an.here + adv
+			an.setSectionBeginPrefix(style)
+			an.positionLastBranch = an.positionHere + advance
 		} else {
-			fmt.Println("text '"+string(an.textInput[an.here])+"' does not match any condition", an.lastBranchPosition, an.here, an.commentContext, an.textContext, an.statementContext)
-			adv = 1
+			advance = 1
 		}
 	}
-	fmt.Println("Analyse finished", an.lastBranchPosition, an.here)
-	an.saveMissedCharacters()
-	fmt.Println("Analyse will end stmt for one last time")
+	an.debug.Printf("Analyse: will end statement for one last time")
 	an.endStatement("")
 }

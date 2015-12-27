@@ -87,20 +87,20 @@ Section is a document node with leaves being its content; if a leaf is another S
 Original text is recovered from DocumentNode rather than Section, thus Section does not support EntityToText.
 */
 type Section struct {
-	BeginningStatement       *Statement
+	FirstStatement           *Statement
 	BeginPrefix, BeginSuffix string
 	EndPrefix, EndSuffix     string
-	EndingStatement          *Statement
+	FinalStatement           *Statement
 }
 
 func (sect *Section) DebugString() string {
 	beginStmtStr := ""
-	if sect.BeginningStatement != nil {
-		beginStmtStr = sect.BeginningStatement.DebugString()
+	if sect.FirstStatement != nil {
+		beginStmtStr = sect.FirstStatement.DebugString()
 	}
 	endStmtStr := ""
-	if sect.EndingStatement != nil {
-		endStmtStr = sect.EndingStatement.DebugString()
+	if sect.FinalStatement != nil {
+		endStmtStr = sect.FinalStatement.DebugString()
 	}
 	return fmt.Sprintf("Section %s%s%s End %s%s%s",
 		sect.BeginPrefix, beginStmtStr, sect.BeginSuffix,
@@ -123,8 +123,8 @@ func (node *DocumentNode) TextString() string {
 	section, isSection := node.Obj.(*Section)
 	if isSection {
 		out.WriteString(section.BeginPrefix)
-		if section.BeginningStatement != nil {
-			out.WriteString(section.BeginningStatement.TextString())
+		if section.FirstStatement != nil {
+			out.WriteString(section.FirstStatement.TextString())
 		}
 		out.WriteString(section.BeginSuffix)
 	} else if node.Obj != nil {
@@ -135,8 +135,8 @@ func (node *DocumentNode) TextString() string {
 	}
 	if isSection {
 		out.WriteString(section.EndPrefix)
-		if section.EndingStatement != nil {
-			out.WriteString(section.EndingStatement.TextString())
+		if section.FinalStatement != nil {
+			out.WriteString(section.FinalStatement.TextString())
 		}
 		out.WriteString(section.EndSuffix)
 	}
