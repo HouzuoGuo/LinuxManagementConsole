@@ -52,7 +52,7 @@ func TestAnalyser(t *testing.T) {
 		EndSectionWithAStatement:     true},
 		&PrintDebugger{})
 
-	an.Analyse()
+	an.Run()
 	DebugNode(an.rootNode, 0)
 	fmt.Println("Reproduced:")
 	fmt.Println(an.rootNode.TextString())
@@ -76,7 +76,7 @@ func TestAnalyser2(t *testing.T) {
 			EndSectionWithAStatement:     false},
 		&PrintDebugger{})
 
-	an.Analyse()
+	an.Run()
 	DebugNode(an.rootNode, 0)
 	fmt.Println("Reproduced:")
 	fmt.Println(an.rootNode.TextString())

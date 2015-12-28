@@ -122,6 +122,7 @@ func (node *DocumentNode) TextString() string {
 	var out bytes.Buffer
 	section, isSection := node.Obj.(*Section)
 	if isSection {
+		// Write section beginning prefix, first statement, and suffix.
 		out.WriteString(section.BeginPrefix)
 		if section.FirstStatement != nil {
 			out.WriteString(section.FirstStatement.TextString())
@@ -134,6 +135,7 @@ func (node *DocumentNode) TextString() string {
 		out.WriteString(leaf.TextString())
 	}
 	if isSection {
+		// Write section ending prefix, final statement, and suffix.
 		out.WriteString(section.EndPrefix)
 		if section.FinalStatement != nil {
 			out.WriteString(section.FinalStatement.TextString())

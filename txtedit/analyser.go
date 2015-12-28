@@ -13,10 +13,10 @@ type Analyser struct {
 	config    *AnalyserConfig  // document style specification and more configuration
 	debug     AnalyzerDebugger // output from analyser's progress, and output of debug information
 
-	positionLastBranch int           // the character index where previous text entity/node was created
-	positionHere       int           // index of the current character where analyser has progressed
-	rootNode           *DocumentNode // the root node of the broken down document
-	thisNode           *DocumentNode // reference to the current document node
+	previousMarkerPosition int           // the character index where previous marker was encountered
+	herePosition           int           // index of the current character where analyser has progressed
+	rootNode               *DocumentNode // the root node of the broken down document
+	thisNode               *DocumentNode // reference to the current document node
 
 	ignoreNewStatementOnce bool       // do not create the next new statement caused by statement continuation marker
 	contextText            *Text      // reference to the current text entity
@@ -179,10 +179,10 @@ func (an *Analyser) endStatement(ending string) {
 
 // In the context comment or text, save the characters that have not yet been placed in any entity.
 func (an *Analyser) saveMissedCharacters() {
-	if an.positionHere-an.positionLastBranch <= 0 {
+	if an.herePosition-an.previousMarkerPosition <= 0 {
 		return // nothing missed
 	}
-	missedContent := an.textInput[an.positionLastBranch:an.positionHere]
+	missedContent := an.textInput[an.previousMarkerPosition:an.herePosition]
 	if an.contextComment != nil {
 		an.debug.Printf("saveMissedText: missed content '%s' is stored in comment %p",
 			missedContent, an.contextComment)
@@ -193,7 +193,7 @@ func (an *Analyser) saveMissedCharacters() {
 			missedContent, an.contextText)
 		an.contextText.Text += missedContent
 	}
-	an.positionLastBranch = an.positionHere
+	an.previousMarkerPosition = an.herePosition
 }
 
 // Place the space characters inside statement indentation or text entity's trailing spaces.
@@ -363,7 +363,7 @@ func (an *Analyser) endSection() {
 				content
 				</sectionA>     <=== "sectionA" is the ending statement
 			*/
-			if len(an.config.SectionEndingSuffixes) > 0 {
+			if len(an.config.SectionEndingPrefixes) > 0 && len(an.config.SectionEndingSuffixes) > 0 {
 				// minNumLeaves is 0 if section does not begin with statement that is also the section's leaf
 				// minNumLeaves is 1 if section begins with a statement that is the section's leaf
 				if len(an.thisNode.Leaves) > minNumLeaves {
@@ -461,7 +461,7 @@ func (an *Analyser) getSectionState() (SectionState, *Section) {
 	return state, section
 }
 
-// Assign the prefix marking to the section, create a new section if there is not one.
+// Save the section beginning's prefix marking, create a new section if there is not one.
 func (an *Analyser) setSectionBeginPrefix(prefix string) {
 	if an.saveQuoteOrCommentCharacters(prefix) {
 		return
@@ -473,7 +473,7 @@ func (an *Analyser) setSectionBeginPrefix(prefix string) {
 		an.createSection()
 		an.thisNode.Parent.Obj.(*Section).BeginPrefix = prefix
 	} else if state == SECTION_STATE_END_NOW {
-		an.debug.Printf("setSectionPrefix: end now")
+		an.debug.Printf("setSectionPrefix: end section right now")
 		sect.BeginPrefix = prefix
 		an.endSection()
 	} else if an.config.SectionMatchMechanism == SECTION_MATCH_FLAT_DOUBLE_ANCHOR ||
@@ -489,62 +489,176 @@ func (an *Analyser) setSectionBeginPrefix(prefix string) {
 	}
 }
 
+// Save the section beginning's suffix marking.
 func (an *Analyser) setSectionBeginSuffix(suffix string) {
 	if an.saveQuoteOrCommentCharacters(suffix) {
 		return
 	}
 	an.endStatement("")
 	if state, sect := an.getSectionState(); state == SECTION_STATE_END_NOW {
-		fmt.Println("BeginSectionSetSuffix: set style and end")
+		an.debug.Printf("setSectionBeginSuffix: end section right now")
 		sect.BeginSuffix = suffix
-		an.saveMissedCharacters()
 		an.endSection()
 	} else if state < SECTION_STATE_HAS_BEGIN_PREFIX || state > SECTION_STATE_HAS_BEGIN_SUFFIX {
-		fmt.Println("BeginSectionSetSuffix: no match, store content")
+		an.debug.Printf("setSectionBeginSuffix: state is not right so only store the characters")
 		an.saveMissedCharacters()
 	} else {
-		fmt.Println("BeginSectionSetSuffix: only set style")
+		an.debug.Printf("setSectionBeginSuffix: set suffix")
 		sect.BeginSuffix = suffix
-		an.saveMissedCharacters()
 	}
 }
 
+// Save the section beginning's prefix marking.
 func (an *Analyser) setSectionEndPrefix(prefix string) {
 	if an.saveQuoteOrCommentCharacters(prefix) {
 		return
 	}
 	an.endStatement("")
 	if state, sect := an.getSectionState(); state == SECTION_STATE_END_NOW {
-		fmt.Println("EndSectionSetPrefix: set style and end")
+		an.debug.Printf("setSectionEndPrefix: end section right now")
 		sect.EndPrefix = prefix
-		an.saveMissedCharacters()
 		an.endSection()
 	} else if state < SECTION_STATE_HAS_BEGIN_SUFFIX || state > SECTION_STATE_HAS_END_PREFIX {
-		fmt.Println("EndSectionSetPrefix: no match, store content")
+		an.debug.Printf("setSectionEndPrefix: state is not right so only store the characters")
 		an.saveMissedCharacters()
 	} else {
-		fmt.Println("EndSectionSetPrefix: only set style")
+		an.debug.Printf("setSectionEndPrefix: set prefix")
 		sect.EndPrefix = prefix
-		an.saveMissedCharacters()
 	}
 }
 
+// Save the section ending's suffix marking.
 func (an *Analyser) setSectionEndSuffix(suffix string) {
 	if an.saveQuoteOrCommentCharacters(suffix) {
 		return
 	}
 	an.endStatement("")
 	if state, sect := an.getSectionState(); state >= SECTION_STATE_HAS_END_PREFIX {
-		fmt.Println("EndSectionSetSuffix: set style and end")
+		an.debug.Printf("setSectionEndSuffix: end section right now")
 		sect.EndSuffix = suffix
-		an.saveMissedCharacters()
 		an.endSection()
 	} else if state < SECTION_STATE_HAS_END_PREFIX && an.config.AmbiguousSectionSuffix {
-		fmt.Println("EndSectionSetSuffix: ambiguous suffix")
+		fmt.Println("setSectionEndSuffix: call setSectionSetBeginSuffix due to ambiguous suffix choice")
 		an.setSectionBeginSuffix(suffix)
 	} else {
-		fmt.Println("EndSectionSetSuffix: only set style")
+		fmt.Println("EndSectionSetSuffix: set suffix")
 		sect.EndSuffix = suffix
-		an.saveMissedCharacters()
 	}
+}
+
+// Look for any string among the match list, from position here. Return the matching string and length of the match.
+func (an *Analyser) LookForAnyOf(matches []string) (string, int) {
+	for _, match := range matches {
+		if len(match) == 1 {
+			// Match single character
+			if an.textInput[an.herePosition] == match[0] {
+				return match, 1
+			} else {
+				continue
+			}
+		} else {
+			// Match string more than two characters long
+			if an.herePosition+len(match) > len(an.textInput) {
+				continue
+			} else if string(an.textInput[an.herePosition:an.herePosition+len(match)]) != match {
+				continue
+			} else {
+				return match, len(match)
+			}
+		}
+	}
+	return "", 0
+}
+
+/*
+Look for consecutive spaces from here position. Return the string of consecutive spaces and its length.
+Space characters are ' ' and '\t'.
+*/
+func (an *Analyser) LookForSpaces() (string, int) {
+	pos := an.herePosition
+	for ; pos < len(an.textInput); pos++ {
+		if an.textInput[pos] != ' ' && an.textInput[pos] != '\t' {
+			break
+		}
+	}
+	return an.textInput[an.herePosition:pos], pos - an.herePosition
+}
+
+// Toggle text quoting in the analyser' context.
+func (an *Analyser) setQuote(quoteStyle string) {
+	if an.contextComment != nil {
+		an.debug.Printf("setQuote: quote '%s' goes into context comment", quoteStyle)
+		an.contextComment.Content += quoteStyle
+		return
+	}
+	an.createTextIfNil()
+	if an.contextText.QuoteStyle == "" {
+		an.debug.Printf("setQuote: begin quoting in text %p", an.contextText)
+		an.contextText.QuoteStyle = quoteStyle
+	} else {
+		if an.contextText.QuoteStyle == quoteStyle {
+			an.debug.Printf("setQuote: finish quoting in text %p", an.contextText)
+			an.endText()
+		} else {
+			an.debug.Printf("setQuote: quote '%s' goes into context text %p", an.contextText)
+			an.saveMissedCharacters()
+			an.contextText.Text += quoteStyle
+		}
+	}
+}
+
+// Break down input text according to analyser's configuration.
+func (an *Analyser) Run() {
+	/*
+		The loop visits the input text character by character, which sets "advance" to 1; unless it meets
+		a marker, which can be longer than one character, and "advance" will be the marker string's length.
+		A marker triggers special processing logic, such as toggling text quote, starting a section, etc.
+		The previousMarkerPosition is updated with the every marker along the way.
+	*/
+	var advance int // how many characters to advance for the next iteration
+	for an.herePosition = 0; an.herePosition < len(an.textInput); an.herePosition += advance {
+		var match string  // the marker string immediate ahead
+		var spaces string // number of consecutive spaces immediate ahead
+		if match, advance = an.LookForAnyOf(an.config.CommentBeginningMarkers); advance > 0 {
+			an.debug.Printf("Comment: %s", match)
+			an.createCommentIfNil(match)
+			an.previousMarkerPosition = an.herePosition + advance
+		} else if match, advance = an.LookForAnyOf(an.config.TextQuoteStyle); advance > 0 {
+			an.debug.Printf("Quote: %s", match)
+			an.setQuote(match)
+			an.previousMarkerPosition = an.herePosition + advance
+		} else if spaces, advance = an.LookForSpaces(); advance > 0 {
+			an.debug.Printf("Spaces: length %d", advance)
+			an.saveSpaces(spaces)
+			an.previousMarkerPosition = an.herePosition + advance
+		} else if match, advance = an.LookForAnyOf(an.config.StatementContinuationMarkers); advance > 0 {
+			an.debug.Printf("Statement continuation: %s", match)
+			an.continueStatement(match)
+			an.previousMarkerPosition = an.herePosition + advance
+		} else if match, advance = an.LookForAnyOf(an.config.StatementEndingMarkers); advance > 0 {
+			an.debug.Printf("Statement ending: %v", []byte(match))
+			an.endStatement(match)
+			an.previousMarkerPosition = an.herePosition + advance
+		} else if match, advance = an.LookForAnyOf(an.config.SectionEndingSuffixes); advance > 0 {
+			an.debug.Printf("Section ending suffix: %s", match)
+			an.setSectionEndSuffix(match)
+			an.previousMarkerPosition = an.herePosition + advance
+		} else if match, advance = an.LookForAnyOf(an.config.SectionEndingPrefixes); advance > 0 {
+			an.debug.Printf("Section ending prefix: %s", match)
+			an.setSectionEndPrefix(match)
+			an.previousMarkerPosition = an.herePosition + advance
+		} else if match, advance = an.LookForAnyOf(an.config.SectionBeginningSuffixes); advance > 0 {
+			an.debug.Printf("Section beginning suffix: %s", match)
+			an.setSectionBeginSuffix(match)
+			an.previousMarkerPosition = an.herePosition + advance
+		} else if match, advance = an.LookForAnyOf(an.config.SectionBeginningPrefixes); advance > 0 {
+			an.debug.Printf("Section beginning prefix: %s", match)
+			an.setSectionBeginPrefix(match)
+			an.previousMarkerPosition = an.herePosition + advance
+		} else {
+			advance = 1
+		}
+	}
+	an.debug.Printf("Run: will end statement for one last time")
+	an.endStatement("")
 }

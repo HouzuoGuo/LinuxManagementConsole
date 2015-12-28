@@ -27,7 +27,7 @@ type AnalyserConfig struct {
 	SectionMatchMechanism    SectionMatchMechanism
 }
 
-// Automatically determine the mechanism for detecting section's beginning/ending.
+// Determine the mechanism for detecting section's beginning/ending.
 func (cfg *AnalyserConfig) DetectSectionMatchMechanism() {
 	if len(cfg.SectionBeginningPrefixes) > 0 && len(cfg.SectionBeginningSuffixes) > 0 &&
 		len(cfg.SectionEndingSuffixes) > 0 && len(cfg.SectionEndingPrefixes) > 0 {
