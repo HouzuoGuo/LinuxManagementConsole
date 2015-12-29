@@ -59,10 +59,7 @@ func TestAnalyser(t *testing.T) {
 	}
 }
 
-var input2 = `zone "." in {
-    type hint;
-    file "root.hint";
-    forwarders { 192.0.2.1; 192.0.2.2; };
+var input2 = `a "." {
 };`
 
 func TestAnalyser2(t *testing.T) {
@@ -84,7 +81,7 @@ func TestAnalyser2(t *testing.T) {
 	fmt.Println(DebugNode(an.rootNode, 0))
 	fmt.Println("Reproduced:")
 	fmt.Println(an.rootNode.TextString())
-	if an.rootNode.TextString() != input {
+	if an.rootNode.TextString() != input2 {
 		t.Fatal("no match")
 	}
 }

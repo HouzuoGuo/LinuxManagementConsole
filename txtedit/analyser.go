@@ -277,30 +277,21 @@ Look for a Statement in the previous sibling and remove the sibling node.
 Return the Statement if it is found, return nil if not found.
 */
 func (an *Analyser) removePreviousSiblingStatement() *Statement {
-	// Find the index of thisNode among its parent's leaves
-	parent := an.thisNode.Parent
-	index := -1
-	if an.thisNode.Parent == nil {
-		an.debug.Printf("removePreviousSiblingStatement: this node %p does not have a parent", an.thisNode)
-		return nil
-	}
-	for i, leaf := range parent.Leaves {
-		if leaf == an.thisNode {
-			index = i
-			break
-		}
-	}
+	index := an.thisNode.GetMyLeafIndex()
 	if index == -1 {
-		an.debug.Printf("removePreviousSiblingStatement: cannot find this node %p among parent %p's leaves", an.thisNode, parent)
+		an.debug.Printf("removePreviousSiblingStatement: cannot find node %p's leaf index",
+			an.thisNode)
 		return nil
 	} else if index == 0 {
-		an.debug.Printf("removePreviousSiblingStatement: this node %p does not have a previous sibling", an.thisNode)
+		an.debug.Printf("removePreviousSiblingStatement: this node %p does not have a previous sibling",
+			an.thisNode)
 		return nil
 	}
-	// Look for a statement in the sibling
+	// Look for a statement in the previous sibling
 	previousSibling := an.thisNode.Parent.Leaves[index-1]
 	if obj := previousSibling.Obj; obj == nil {
-		an.debug.Printf("removePreviousSiblingStatement: this node %p's previs leaf %p is empty", an.thisNode, previousSibling)
+		an.debug.Printf("removePreviousSiblingStatement: this node %p's previous leaf %p is empty",
+			an.thisNode, previousSibling)
 		return nil
 	} else if stmt, ok := obj.(*Statement); !ok {
 		an.debug.Printf("removePreviousSiblingStatement: this node %p's previous leaf %p does not hold a statement",

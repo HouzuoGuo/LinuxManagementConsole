@@ -118,6 +118,19 @@ type DocumentNode struct {
 	Leaves []*DocumentNode
 }
 
+// Return the index of this node among its parent's leaves. Return -1 if parent is nil or this leaf is not found.
+func (node *DocumentNode) GetMyLeafIndex() int {
+	if node.Parent == nil {
+		return -1
+	}
+	for i, leaf := range node.Parent.Leaves {
+		if leaf == node {
+			return i
+		}
+	}
+	return -1
+}
+
 func (node *DocumentNode) TextString() string {
 	var out bytes.Buffer
 	section, isSection := node.Obj.(*Section)
