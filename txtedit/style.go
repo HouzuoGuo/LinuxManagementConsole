@@ -1,7 +1,6 @@
 package txtedit
 
 const (
-	SECTION_MATCH_NO_SECTION           = 0  // The document does not use any section marker
 	SECTION_MATCH_FLAT_SINGLE_ANCHOR   = 11 // For example ==Foobar
 	SECTION_MATCH_FLAT_DOUBLE_ANCHOR   = 12 // For example [Foobar]
 	SECTION_MATCH_NESTED_DOUBLE_ANCHOR = 22 // For example Foo{bar}
@@ -33,7 +32,7 @@ func (cfg *AnalyserConfig) DetectSectionMatchMechanism() {
 		len(cfg.SectionEndingSuffixes) > 0 && len(cfg.SectionEndingPrefixes) > 0 {
 		// All markers are present, sections can be nested. For example <Foo>bar</Foo>
 		cfg.SectionMatchMechanism = SECTION_MATCH_NESTED_QUAD_ANCHOR
-	} else if len(cfg.SectionBeginningSuffixes) > 0 && len(cfg.SectionEndingPrefixes) > 0 {
+	} else if len(cfg.SectionBeginningSuffixes) > 0 && len(cfg.SectionEndingSuffixes) > 0 {
 		// Two markers surround the section, sections can be nested. For example Foo{bar}
 		cfg.SectionMatchMechanism = SECTION_MATCH_NESTED_DOUBLE_ANCHOR
 	} else if len(cfg.SectionBeginningPrefixes) > 0 && len(cfg.SectionBeginningSuffixes) > 0 {
@@ -42,9 +41,6 @@ func (cfg *AnalyserConfig) DetectSectionMatchMechanism() {
 	} else if len(cfg.SectionBeginningPrefixes) > 0 {
 		// Single marker marks beginning of a section, sections do not nest. For example ==Foobar
 		cfg.SectionMatchMechanism = SECTION_MATCH_FLAT_SINGLE_ANCHOR
-	} else {
-		// Document does not use any section marker
-		cfg.SectionMatchMechanism = SECTION_MATCH_NO_SECTION
 	}
 	/*
 		Ambiguous section suffixes require special treatment in the analyser according to the bool flag.

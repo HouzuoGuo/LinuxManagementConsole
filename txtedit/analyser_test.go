@@ -35,8 +35,6 @@ var input2 = `zone "." in {
 };
 `
 */
-var input2 = `a {
-};`
 
 func TestAnalyser(t *testing.T) {
 	an := NewAnalyser(input, &AnalyserConfig{
@@ -53,13 +51,19 @@ func TestAnalyser(t *testing.T) {
 		&PrintDebugger{})
 
 	an.Run()
-	DebugNode(an.rootNode, 0)
+	fmt.Println(DebugNode(an.rootNode, 0))
 	fmt.Println("Reproduced:")
 	fmt.Println(an.rootNode.TextString())
 	if an.rootNode.TextString() != input {
 		t.Fatal("no match")
 	}
 }
+
+var input2 = `zone "." in {
+    type hint;
+    file "root.hint";
+    forwarders { 192.0.2.1; 192.0.2.2; };
+};`
 
 func TestAnalyser2(t *testing.T) {
 	an := NewAnalyser(input2,
@@ -77,7 +81,10 @@ func TestAnalyser2(t *testing.T) {
 		&PrintDebugger{})
 
 	an.Run()
-	DebugNode(an.rootNode, 0)
+	fmt.Println(DebugNode(an.rootNode, 0))
 	fmt.Println("Reproduced:")
 	fmt.Println(an.rootNode.TextString())
+	if an.rootNode.TextString() != input {
+		t.Fatal("no match")
+	}
 }

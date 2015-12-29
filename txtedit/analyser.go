@@ -272,13 +272,16 @@ func (an *Analyser) createSection() {
 	an.createLeaf()
 }
 
-// Look for a Statement in the previous sibling, return it if found, return nil if not found.
-func (an *Analyser) getPreviousSiblingStatement() *Statement {
+/*
+Look for a Statement in the previous sibling and remove the sibling node.
+Return the Statement if it is found, return nil if not found.
+*/
+func (an *Analyser) removePreviousSiblingStatement() *Statement {
 	// Find the index of thisNode among its parent's leaves
 	parent := an.thisNode.Parent
 	index := -1
 	if an.thisNode.Parent == nil {
-		an.debug.Printf("getPreviousSiblingStatement: this node %p does not have a parent", an.thisNode)
+		an.debug.Printf("removePreviousSiblingStatement: this node %p does not have a parent", an.thisNode)
 		return nil
 	}
 	for i, leaf := range parent.Leaves {
@@ -288,25 +291,28 @@ func (an *Analyser) getPreviousSiblingStatement() *Statement {
 		}
 	}
 	if index == -1 {
-		an.debug.Printf("getPreviousSiblingStatement: cannot find this node %p among parent %p's leaves", an.thisNode, parent)
+		an.debug.Printf("removePreviousSiblingStatement: cannot find this node %p among parent %p's leaves", an.thisNode, parent)
 		return nil
 	} else if index == 0 {
-		an.debug.Printf("getPreviousSiblingStatement: this node %p does not have a previous sibling", an.thisNode)
+		an.debug.Printf("removePreviousSiblingStatement: this node %p does not have a previous sibling", an.thisNode)
 		return nil
 	}
 	// Look for a statement in the sibling
 	previousSibling := an.thisNode.Parent.Leaves[index-1]
 	if obj := previousSibling.Obj; obj == nil {
-		an.debug.Printf("getPreviousSiblingStatement: this node %p's previs leaf %p is empty", an.thisNode, previousSibling)
+		an.debug.Printf("removePreviousSiblingStatement: this node %p's previs leaf %p is empty", an.thisNode, previousSibling)
 		return nil
-	} else if stmt, ok := obj.(*Statement); ok {
-		an.debug.Printf("getPreviousSiblingStatement: this node %p's previous leaf %p holds a statement %p",
-			an.thisNode, previousSibling, stmt)
-		return stmt
-	} else {
-		an.debug.Printf("getPreviousSiblingStatement: this node %p's previous leaf %p does not hold a statement",
+	} else if stmt, ok := obj.(*Statement); !ok {
+		an.debug.Printf("removePreviousSiblingStatement: this node %p's previous leaf %p does not hold a statement",
 			an.thisNode, previousSibling)
 		return nil
+	} else {
+		// Remove the sibling and return the statement
+		an.debug.Printf("removePreviousSiblingStatement: this node %p's previous leaf %p holds a statement %p",
+			an.thisNode, previousSibling, stmt)
+		leaves := an.thisNode.Parent.Leaves
+		an.thisNode.Parent.Leaves = append(leaves[0:index-1], leaves[index:]...)
+		return stmt
 	}
 }
 
@@ -336,7 +342,7 @@ func (an *Analyser) endSection() {
 				Then the first statement is the section node's first leaf.
 			*/
 			if len(an.config.SectionBeginningPrefixes) == 0 {
-				sect.FirstStatement = an.getPreviousSiblingStatement()
+				sect.FirstStatement = an.removePreviousSiblingStatement()
 				an.debug.Printf("endSection: first statement is the previous sibling %p", sect.FirstStatement)
 			} else {
 				sectionFirstLeaf := an.thisNode.Leaves[0]
@@ -418,8 +424,6 @@ func (an *Analyser) getSectionState() (SectionState, *Section) {
 	}
 	var state SectionState
 	switch an.config.SectionMatchMechanism {
-	case SECTION_MATCH_NO_SECTION:
-		state = SECTION_STATE_END_NOW
 	case SECTION_MATCH_FLAT_SINGLE_ANCHOR:
 		if section.BeginPrefix == "" {
 			state = SECTION_STATE_BEFORE_BEGIN
@@ -469,20 +473,24 @@ func (an *Analyser) setSectionBeginPrefix(prefix string) {
 	an.endStatement("")
 	state, sect := an.getSectionState()
 	if state == SECTION_STATE_BEFORE_BEGIN {
+		// Create a new section while not being in a section
 		an.debug.Printf("setSectionPrefix: create a new section from node %p", an.thisNode)
 		an.createSection()
 		an.thisNode.Parent.Obj.(*Section).BeginPrefix = prefix
 	} else if state == SECTION_STATE_END_NOW {
+		// Marker matches but section should end now
 		an.debug.Printf("setSectionPrefix: end section right now")
 		sect.BeginPrefix = prefix
 		an.endSection()
 	} else if an.config.SectionMatchMechanism == SECTION_MATCH_FLAT_DOUBLE_ANCHOR ||
 		an.config.SectionMatchMechanism == SECTION_MATCH_FLAT_DOUBLE_ANCHOR {
+		// Already in a section but document does not allow nested section
 		an.debug.Printf("setSectionPrefix: end section of node %p and create a new section", an.thisNode.Parent)
 		an.endSection()
 		an.createSection()
 		an.thisNode.Parent.Obj.(*Section).BeginPrefix = prefix
 	} else {
+		// Create a nested section
 		an.debug.Printf("setSectionPrefix: create a nested section from node %p", an.thisNode)
 		an.createSection()
 		an.thisNode.Parent.Obj.(*Section).BeginPrefix = prefix
@@ -496,13 +504,21 @@ func (an *Analyser) setSectionBeginSuffix(suffix string) {
 	}
 	an.endStatement("")
 	if state, sect := an.getSectionState(); state == SECTION_STATE_END_NOW {
+		// Marker matches but section should end now
 		an.debug.Printf("setSectionBeginSuffix: end section right now")
 		sect.BeginSuffix = suffix
 		an.endSection()
+	} else if an.config.SectionMatchMechanism == SECTION_MATCH_NESTED_DOUBLE_ANCHOR {
+		// Create a section or nested section
+		an.debug.Printf("setSectionBeginSuffix: create a new section/nested section from node %p", an.thisNode)
+		an.createSection()
+		an.thisNode.Parent.Obj.(*Section).BeginSuffix = suffix
 	} else if state < SECTION_STATE_HAS_BEGIN_PREFIX || state > SECTION_STATE_HAS_BEGIN_SUFFIX {
+		// State is not right so the marker must have been text
 		an.debug.Printf("setSectionBeginSuffix: state is not right so only store the characters")
 		an.saveMissedCharacters()
 	} else {
+		// Set suffix if state is right
 		an.debug.Printf("setSectionBeginSuffix: set suffix")
 		sect.BeginSuffix = suffix
 	}
