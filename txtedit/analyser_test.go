@@ -5,36 +5,14 @@ import (
 	"testing"
 )
 
-var input = `
-<SA>
-	<SB>
-		<SC>
-			"123"
-			'456'
-		</SC>
-		789
-		012
-	</SB>
-	345
-	<SC>
-		678
-	</SC>
-	901
-</SA>
-234
+var input = `DirectoryIndex index.html index.html.var
+<Files ~ "^\.ht">
+    <IfModule mod_access_compat.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</Files>
 `
-
-var input0 = `<A>
-</A>`
-
-/*
-var input2 = `zone "." in {
-    type hint;
-    file "root.hint";
-    forwarders { 192.0.2.1; 192.0.2.2; };
-};
-`
-*/
 
 func TestAnalyser(t *testing.T) {
 	an := NewAnalyser(input, &AnalyserConfig{
@@ -59,7 +37,10 @@ func TestAnalyser(t *testing.T) {
 	}
 }
 
-var input2 = `a "." {
+var input2 = `zone "." in {
+    type hint;
+    file "root.hint";
+    forwarders { 192.0.2.1; 192.0.2.2; };
 };`
 
 func TestAnalyser2(t *testing.T) {
@@ -82,6 +63,39 @@ func TestAnalyser2(t *testing.T) {
 	fmt.Println("Reproduced:")
 	fmt.Println(an.rootNode.TextString())
 	if an.rootNode.TextString() != input2 {
+		t.Fatal("no match")
+	}
+}
+
+var input3 = `# See systemd-system.conf(5) for details.
+
+[Manager]
+#LogLevel=info
+#LogTarget=journal-or-kmsg
+[Journald]
+haha
+`
+
+func TestAnalyser3(t *testing.T) {
+	an := NewAnalyser(input3,
+		&AnalyserConfig{
+			StatementContinuationMarkers: []string{},
+			StatementEndingMarkers:       []string{"\n"},
+			CommentBeginningMarkers:      []string{"#"},
+			TextQuoteStyle:               []string{"\""},
+			SectionBeginningPrefixes:     []string{"["},
+			SectionBeginningSuffixes:     []string{"]"},
+			SectionEndingPrefixes:        []string{},
+			SectionEndingSuffixes:        []string{},
+			BeginSectionWithAStatement:   true,
+			EndSectionWithAStatement:     false},
+		&PrintDebugger{})
+
+	an.Run()
+	fmt.Println(DebugNode(an.rootNode, 0))
+	fmt.Println("Reproduced:")
+	fmt.Println(an.rootNode.TextString())
+	if an.rootNode.TextString() != input3 {
 		t.Fatal("no match")
 	}
 }

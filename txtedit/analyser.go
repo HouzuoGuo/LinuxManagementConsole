@@ -202,8 +202,8 @@ func (an *Analyser) saveSpaces(spaces string) {
 	length := len(spaces)
 	if an.ignoreNewStatementOnce {
 		an.endText()
-		an.createTextIfNil()
 		an.debug.Printf("saveSpaces: ignoreNewStatementOnce is true, %d spaces go into text %p", length, an.contextText)
+		an.createTextIfNil()
 		an.contextText.TrailingSpaces += spaces
 		an.endText()
 	} else if an.contextComment != nil {
@@ -213,6 +213,21 @@ func (an *Analyser) saveSpaces(spaces string) {
 		an.debug.Printf("saveSpaces: %d spaces go into text %p", length, an.contextText)
 		an.contextText.TrailingSpaces = spaces
 		an.endText()
+	} else if an.contextStatement != nil && len(an.contextStatement.Pieces) > 0 {
+		lastPiece := an.contextStatement.Pieces[len(an.contextStatement.Pieces)-1]
+		switch t := lastPiece.(type) {
+		case *Text:
+			t.TrailingSpaces += spaces
+			an.debug.Printf("saveSpaces: %d spaces go into last text piece %p", t)
+		case *Comment:
+			t.Content += spaces
+			an.debug.Printf("saveSpaces: %d spaces go into last comment piece %p", t)
+		case *StatementContinue:
+			an.createTextIfNil()
+			an.debug.Printf("saveSpaces: %d spaces go into new text piece %p", an.contextText)
+			an.contextText.TrailingSpaces += spaces
+			an.endText()
+		}
 	} else if an.contextStatement != nil {
 		an.debug.Printf("saveSpaces: %d spaces go into indentation of context statement %p",
 			length, an.contextStatement)
@@ -666,6 +681,11 @@ func (an *Analyser) Run() {
 			advance = 1
 		}
 	}
-	an.debug.Printf("Run: will end statement for one last time")
+	an.debug.Printf("Run: end statement for the last time")
 	an.endStatement("")
+	an.debug.Printf("Run: end all open sections for the last time")
+	// End all sections
+	for an.thisNode.Parent != an.rootNode {
+		an.endSection()
+	}
 }
