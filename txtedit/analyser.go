@@ -91,6 +91,9 @@ func (an *Analyser) createCommentIfNil(commentStyle string) {
 		an.contextComment = new(Comment)
 		an.contextComment.CommentStyle = commentStyle
 		an.debug.Printf("createCommentIfNil: context comment is assigned to %p", an.contextComment)
+	} else {
+		an.contextComment.Content += commentStyle
+		an.debug.Printf("createCommentIfNil: comment style goes into %p", an.contextComment)
 	}
 }
 
@@ -173,10 +176,13 @@ func (an *Analyser) endStatement(ending string) {
 	an.contextStatement = nil
 }
 
-// In the context comment or text, save the characters that have not yet been placed in any entity.
-func (an *Analyser) saveMissedCharacters() {
+/*
+In the context comment or text, save the characters that have not yet been placed in any entity.
+Return true only if the missed characters has been saved.
+*/
+func (an *Analyser) saveMissedCharacters() bool {
 	if an.herePosition-an.previousMarkerPosition <= 0 {
-		return // nothing missed
+		return false // nothing missed
 	}
 	missedContent := an.textInput[an.previousMarkerPosition:an.herePosition]
 	if an.contextComment != nil {
@@ -190,6 +196,7 @@ func (an *Analyser) saveMissedCharacters() {
 		an.contextText.Text += missedContent
 	}
 	an.previousMarkerPosition = an.herePosition
+	return true
 }
 
 // Place the space characters inside statement indentation or text entity's trailing spaces.
@@ -611,6 +618,11 @@ func (an *Analyser) setQuote(quoteStyle string) {
 		an.contextComment.Content += quoteStyle
 		return
 	}
+	// Save missed text that is not being quoted
+	if (an.contextText == nil || an.contextText.QuoteStyle == "") && an.saveMissedCharacters() {
+		// Let the quote mark go into a new text entity
+		an.endText()
+	}
 	an.createTextIfNil()
 	if an.contextText.QuoteStyle == "" {
 		an.debug.Printf("setQuote: begin quoting in text %p", an.contextText)
@@ -683,7 +695,7 @@ func (an *Analyser) Run() *DocumentNode {
 	an.endStatement("")
 	an.debug.Printf("Run: end all open sections for the last time")
 	// End all sections
-	for an.thisNode.Parent != an.rootNode {
+	for recursionGuard := 0; recursionGuard < 100 && an.thisNode.Parent != an.rootNode; recursionGuard++ {
 		an.endSection()
 	}
 	return an.rootNode
