@@ -1,9 +1,5 @@
 package txtedit
 
-import (
-	"fmt"
-)
-
 /*
 Text analyser analyses input text character by character, breaks down the whole document into smaller
 pieces that are easier for further analysis and reproduction of document text.
@@ -245,11 +241,13 @@ func (an *Analyser) saveSpaces(spaces string) {
 // In the context comment or quoted text, save the characters. Return true only if such context is found.
 func (an *Analyser) saveQuoteOrCommentCharacters(str string) bool {
 	if an.contextComment != nil {
+		an.saveMissedCharacters()
 		an.debug.Printf("saveQuoteOrCommentCharacters: save '%s' in context comment %p", str, an.contextComment)
 		an.contextComment.Content += str
 		return true
 	}
 	if an.contextText != nil && an.contextText.QuoteStyle != "" {
+		an.saveMissedCharacters()
 		an.debug.Printf("saveQuoteOrCommentCharacters: save '%s' in context text %p", str, an.contextText)
 		an.contextText.Text += str
 		return true
@@ -480,24 +478,24 @@ func (an *Analyser) setSectionBeginPrefix(prefix string) {
 	state, sect := an.getSectionState()
 	if state == SECTION_STATE_BEFORE_BEGIN {
 		// Create a new section while not being in a section
-		an.debug.Printf("setSectionPrefix: create a new section from node %p", an.thisNode)
+		an.debug.Printf("setSectionBeginPrefix: create a new section from node %p", an.thisNode)
+		an.createSection()
+		an.thisNode.Parent.Obj.(*Section).BeginPrefix = prefix
+	} else if an.config.SectionMatchMechanism == SECTION_MATCH_FLAT_DOUBLE_ANCHOR ||
+		an.config.SectionMatchMechanism == SECTION_MATCH_FLAT_DOUBLE_ANCHOR {
+		// Already in a section but document does not allow nested section
+		an.debug.Printf("setSectionBeginPrefix: end section of node %p and create a new section", an.thisNode.Parent)
+		an.endSection()
 		an.createSection()
 		an.thisNode.Parent.Obj.(*Section).BeginPrefix = prefix
 	} else if state == SECTION_STATE_END_NOW {
 		// Marker matches but section should end now
-		an.debug.Printf("setSectionPrefix: end section right now")
+		an.debug.Printf("setSectionBeginPrefix: end section right now")
 		sect.BeginPrefix = prefix
 		an.endSection()
-	} else if an.config.SectionMatchMechanism == SECTION_MATCH_FLAT_DOUBLE_ANCHOR ||
-		an.config.SectionMatchMechanism == SECTION_MATCH_FLAT_DOUBLE_ANCHOR {
-		// Already in a section but document does not allow nested section
-		an.debug.Printf("setSectionPrefix: end section of node %p and create a new section", an.thisNode.Parent)
-		an.endSection()
-		an.createSection()
-		an.thisNode.Parent.Obj.(*Section).BeginPrefix = prefix
 	} else {
 		// Create a nested section
-		an.debug.Printf("setSectionPrefix: create a nested section from node %p", an.thisNode)
+		an.debug.Printf("setSectionBeginPrefix: create a nested section from node %p", an.thisNode)
 		an.createSection()
 		an.thisNode.Parent.Obj.(*Section).BeginPrefix = prefix
 	}
@@ -560,16 +558,16 @@ func (an *Analyser) setSectionEndSuffix(suffix string) {
 		sect.EndSuffix = suffix
 		an.endSection()
 	} else if state < SECTION_STATE_HAS_END_PREFIX && an.config.AmbiguousSectionSuffix {
-		fmt.Println("setSectionEndSuffix: call setSectionSetBeginSuffix due to ambiguous suffix choice")
+		an.debug.Printf("setSectionEndSuffix: call setSectionSetBeginSuffix due to ambiguous suffix choice")
 		an.setSectionBeginSuffix(suffix)
 	} else {
-		fmt.Println("EndSectionSetSuffix: set suffix")
+		an.debug.Printf("EndSectionSetSuffix: set suffix")
 		sect.EndSuffix = suffix
 	}
 }
 
 // Look for any string among the match list, from position here. Return the matching string and length of the match.
-func (an *Analyser) LookForAnyOf(matches []string) (string, int) {
+func (an *Analyser) lookForAnyOf(matches []string) (string, int) {
 	for _, match := range matches {
 		if len(match) == 1 {
 			// Match single character
@@ -596,7 +594,7 @@ func (an *Analyser) LookForAnyOf(matches []string) (string, int) {
 Look for consecutive spaces from here position. Return the string of consecutive spaces and its length.
 Space characters are ' ' and '\t'.
 */
-func (an *Analyser) LookForSpaces() (string, int) {
+func (an *Analyser) lookForSpaces() (string, int) {
 	pos := an.herePosition
 	for ; pos < len(an.textInput); pos++ {
 		if an.textInput[pos] != ' ' && an.textInput[pos] != '\t' {
@@ -629,8 +627,8 @@ func (an *Analyser) setQuote(quoteStyle string) {
 	}
 }
 
-// Break down input text according to analyser's configuration.
-func (an *Analyser) Run() {
+// Break down input text according to analyser's configuration. Return the root document node.
+func (an *Analyser) Run() *DocumentNode {
 	/*
 		The loop visits the input text character by character, which sets "advance" to 1; unless it meets
 		a marker, which can be longer than one character, and "advance" will be the marker string's length.
@@ -641,39 +639,39 @@ func (an *Analyser) Run() {
 	for an.herePosition = 0; an.herePosition < len(an.textInput); an.herePosition += advance {
 		var match string  // the marker string immediate ahead
 		var spaces string // number of consecutive spaces immediate ahead
-		if match, advance = an.LookForAnyOf(an.config.CommentBeginningMarkers); advance > 0 {
+		if match, advance = an.lookForAnyOf(an.config.CommentBeginningMarkers); advance > 0 {
 			an.debug.Printf("Comment: %s", match)
 			an.createCommentIfNil(match)
 			an.previousMarkerPosition = an.herePosition + advance
-		} else if match, advance = an.LookForAnyOf(an.config.TextQuoteStyle); advance > 0 {
+		} else if match, advance = an.lookForAnyOf(an.config.TextQuoteStyle); advance > 0 {
 			an.debug.Printf("Quote: %s", match)
 			an.setQuote(match)
 			an.previousMarkerPosition = an.herePosition + advance
-		} else if spaces, advance = an.LookForSpaces(); advance > 0 {
+		} else if spaces, advance = an.lookForSpaces(); advance > 0 {
 			an.debug.Printf("Spaces: length %d", advance)
 			an.saveSpaces(spaces)
 			an.previousMarkerPosition = an.herePosition + advance
-		} else if match, advance = an.LookForAnyOf(an.config.StatementContinuationMarkers); advance > 0 {
+		} else if match, advance = an.lookForAnyOf(an.config.StatementContinuationMarkers); advance > 0 {
 			an.debug.Printf("Statement continuation: %s", match)
 			an.continueStatement(match)
 			an.previousMarkerPosition = an.herePosition + advance
-		} else if match, advance = an.LookForAnyOf(an.config.StatementEndingMarkers); advance > 0 {
+		} else if match, advance = an.lookForAnyOf(an.config.StatementEndingMarkers); advance > 0 {
 			an.debug.Printf("Statement ending: %v", []byte(match))
 			an.endStatement(match)
 			an.previousMarkerPosition = an.herePosition + advance
-		} else if match, advance = an.LookForAnyOf(an.config.SectionEndingSuffixes); advance > 0 {
+		} else if match, advance = an.lookForAnyOf(an.config.SectionEndingSuffixes); advance > 0 {
 			an.debug.Printf("Section ending suffix: %s", match)
 			an.setSectionEndSuffix(match)
 			an.previousMarkerPosition = an.herePosition + advance
-		} else if match, advance = an.LookForAnyOf(an.config.SectionEndingPrefixes); advance > 0 {
+		} else if match, advance = an.lookForAnyOf(an.config.SectionEndingPrefixes); advance > 0 {
 			an.debug.Printf("Section ending prefix: %s", match)
 			an.setSectionEndPrefix(match)
 			an.previousMarkerPosition = an.herePosition + advance
-		} else if match, advance = an.LookForAnyOf(an.config.SectionBeginningSuffixes); advance > 0 {
+		} else if match, advance = an.lookForAnyOf(an.config.SectionBeginningSuffixes); advance > 0 {
 			an.debug.Printf("Section beginning suffix: %s", match)
 			an.setSectionBeginSuffix(match)
 			an.previousMarkerPosition = an.herePosition + advance
-		} else if match, advance = an.LookForAnyOf(an.config.SectionBeginningPrefixes); advance > 0 {
+		} else if match, advance = an.lookForAnyOf(an.config.SectionBeginningPrefixes); advance > 0 {
 			an.debug.Printf("Section beginning prefix: %s", match)
 			an.setSectionBeginPrefix(match)
 			an.previousMarkerPosition = an.herePosition + advance
@@ -688,4 +686,5 @@ func (an *Analyser) Run() {
 	for an.thisNode.Parent != an.rootNode {
 		an.endSection()
 	}
+	return an.rootNode
 }
