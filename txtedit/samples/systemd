@@ -1,0 +1,118 @@
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+#
+# Entries in this file show the compile time defaults.
+# You can change settings by editing this file.
+# Defaults can be restored by simply deleting this file.
+#
+# See bootchart.conf(5) for details.
+
+[Bootchart]
+Samples=500
+#Frequency=25
+Relative=no
+#Filter=yes
+Output=<folder name, defaults to /run/log>
+#Init=/path/to/init-binary
+PlotMemoryUsage=no
+#PlotEntropyGraph=no
+ScaleX=100
+#ScaleY=20
+ControlGroup=no
+#PerCPU=no
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+#
+# Entries in this file show the compile time defaults.
+# You can change settings by editing this file.
+# Defaults can be restored by simply deleting this file.
+#
+# See coredump.conf(5) for details.
+
+[Coredump]
+Storage=external
+#Compress=yes
+ProcessSizeMax=2G
+#ExternalSizeMax=2G
+JournalSizeMax=767M
+#MaxUse=
+KeepFree=
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+#
+# Entries in this file show the compile time defaults.
+# You can change settings by editing this file.
+# Defaults can be restored by simply deleting this file.
+#
+# See timesyncd.conf(5) for details.
+
+[Time]
+NTP=
+FallbackNTP=0.opensuse.pool.ntp.org 1.opensuse.pool.ntp.org 2.opensuse.pool.ntp.org 3.opensuse.pool.ntp.org
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+#
+# You can override the directives in this file by creating files in
+# /etc/systemd/user.conf.d/*.conf.
+#
+# See systemd-user.conf(5) for details
+
+[Manager]
+LogLevel=info
+#LogTarget=console
+LogColor=yes
+#LogLocation=no
+#SystemCallArchitectures=
+TimerSlackNSec=
+#DefaultTimerAccuracySec=1min
+DefaultStandardOutput=inherit
+#DefaultStandardError=inherit
+DefaultTimeoutStartSec=90s
+#DefaultTimeoutStopSec=90s
+DefaultRestartSec=100ms
+#DefaultStartLimitInterval=10s
+DefaultStartLimitBurst=5
+#DefaultEnvironment=
+DefaultLimitCPU=
+#DefaultLimitFSIZE=
+DefaultLimitDATA=
+#DefaultLimitSTACK=
+DefaultLimitCORE=
+#DefaultLimitRSS=
+DefaultLimitNOFILE=
+#DefaultLimitAS=
+DefaultLimitNPROC=
+#DefaultLimitMEMLOCK=
+DefaultLimitLOCKS=
+#DefaultLimitSIGPENDING=
+DefaultLimitMSGQUEUE=
+#DefaultLimitNICE=
+DefaultLimitRTPRIO=
+#DefaultLimitRTTIME=
+
+# here are 'some' comments
+[NewSection1]
+EXTRA_VAL4=
+EXTRA_VAL1="" # here are some "more" comments
+EXTRA_VAL2=1
+EXTRA_VAL3='a'
+[NewSection2]
+[]
+
+[NewSection3]

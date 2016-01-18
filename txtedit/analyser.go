@@ -141,8 +141,9 @@ func (an *Analyser) createStatementIfNil() {
 // Move context text and comment into context statement (create new statement if necessary), and clear context statement.
 func (an *Analyser) endStatement(ending string) {
 	if an.contextText != nil && an.contextText.QuoteStyle != "" {
-		an.contextText.Text += ending
+		an.saveMissedCharacters()
 		an.debug.Printf("endStatement: the statement ending goes into context text %p", an.contextText)
+		an.contextText.Text += ending
 		return
 	}
 	// Organise context objects
@@ -158,6 +159,10 @@ func (an *Analyser) endStatement(ending string) {
 		an.debug.Printf("endStatement: context comment and text are nil, nothing to save")
 		if ending != "" {
 			an.debug.Printf("endStatement: save statement ending in a new statement")
+			// The following branch is a workaround for input text "[]\n", assuming [] denotes a section.
+			if state, _ := an.getSectionState(); state == SECTION_STATE_END_NOW {
+				an.endSection()
+			}
 			an.createDocumentSiblingNode(&Statement{Ending: ending})
 		}
 		return
@@ -614,6 +619,7 @@ func (an *Analyser) lookForSpaces() (string, int) {
 // Toggle text quoting in the analyser' context.
 func (an *Analyser) setQuote(quoteStyle string) {
 	if an.contextComment != nil {
+		an.saveMissedCharacters()
 		an.debug.Printf("setQuote: quote '%s' goes into context comment", quoteStyle)
 		an.contextComment.Content += quoteStyle
 		return
@@ -695,7 +701,7 @@ func (an *Analyser) Run() *DocumentNode {
 	an.endStatement("")
 	an.debug.Printf("Run: end all open sections for the last time")
 	// End all sections
-	for recursionGuard := 0; recursionGuard < 100 && an.thisNode.Parent != an.rootNode; recursionGuard++ {
+	for recursionGuard := 0; recursionGuard < 100 && an.thisNode.Parent != nil && an.thisNode.Parent != an.rootNode; recursionGuard++ {
 		an.endSection()
 	}
 	return an.rootNode

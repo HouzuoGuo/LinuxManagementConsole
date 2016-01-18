@@ -1,0 +1,172 @@
+## Path:        Hardware/Console
+## Description: Text console settings (see also Hardware/Keyboard)
+## Type:	string
+## Default:	""
+## ServiceRestart: kbd
+#
+# Console settings.
+# Note: The KBD_TTY setting from Hardware/Keyboard (sysconfig/keyboard)
+# also applies for the settings here.
+#
+# Load this console font on bootup:
+# (/usr/share/kbd/consolefonts/)
+#
+CONSOLE_FONT="lat9w-16.psfu"
+
+## Type:	string
+## Default:	""
+#
+# Some fonts come without a unicode map.
+# (.psfu fonts supposedly have it, others often not.)
+# You can then specify the unicode mapping of your font
+# explicitly. (/usr/share/kbd/unimaps/)
+# Normally not needed.
+#
+CONSOLE_UNICODEMAP=""
+
+## Type:	string
+## Default:	""
+#
+# Most programs output 8 bit characters, so you need a table to
+# translate those characters into unicode. That one can be specified
+# here. (/usr/share/kbd/consoletrans/)
+# (Note: If your console is in utf-8 mode you don't need this.)
+# If your code does not use a unicode mapping at all (because you
+# e.g. explicitly specified UNICODEMAP="none") you may circumvent
+# the translation via unicode, but load a map which directly maps
+# 8 bit output of your program to a font position.
+#
+CONSOLE_SCREENMAP="trivial"
+
+## Type:	string
+## Default:	""
+#
+# for some fonts the console has to be initialized with CONSOLE_MAGIC.
+# CONSOLE_MAGIC can be empty or have the values "(B", ")B", "(K" or ")K".
+# Normally not needed (automatically handled by setfont).
+#
+CONSOLE_MAGIC="(K"
+
+# Encoding used for output of non-ascii characters.
+#
+CONSOLE_ENCODING="UTF-8"
+## Path:        Desktop/Display manager
+## Type:        string(Xorg)
+## Default:     "Xorg"
+#
+DISPLAYMANAGER_XSERVER="Xorg"
+## Path:	Desktop/Display manager
+## Description:	settings to generate a proper displaymanager config
+
+## Type:	string(kdm,xdm,gdm,wdm,entrance,console,lightdm,sddm)
+## Default:	""
+#
+# Here you can set the default Display manager (kdm/xdm/gdm/wdm/entrance/console).
+# all changes in this file require a restart of the displaymanager
+#
+DISPLAYMANAGER="lightdm"
+
+## Type:	yesno
+## Default:	no
+#
+# Allow remote access (XDMCP) to your display manager (xdm/kdm/gdm). Please note
+# that a modified kdm or xdm configuration, e.g. by KDE control center
+# will not be changed. For gdm, values will be updated after change.
+# XDMCP service should run only on trusted networks and you have to disable
+# firewall for interfaces, where you want to provide this service.
+#
+DISPLAYMANAGER_REMOTE_ACCESS="no"
+
+## Type:	yesno
+## Default:	no
+#
+# Allow remote access of the user root to your display manager. Note
+# that root can never login if DISPLAYMANAGER_SHUTDOWN is "auto" and
+# System/Security/Permissions/PERMISSION_SECURITY is "paranoid"
+#
+DISPLAYMANAGER_ROOT_LOGIN_REMOTE="no"
+
+## Type:	yesno
+## Default:	yes
+#
+# Let the displaymanager start a local Xserver.
+# Set to "no" for remote-access only.
+# Set to "no" on architectures without any Xserver (e.g. s390/s390x).
+#
+DISPLAYMANAGER_STARTS_XSERVER="yes"
+
+## Type:        yesno
+## Default:     no
+#
+# TCP port 6000 of Xserver. When set to "no" (default) Xserver is
+# started with "-nolisten tcp". Only set this to "yes" if you really
+# need to. Remote X service should run only on trusted networks and
+# you have to disable firewall for interfaces, where you want to
+# provide this service. Use ssh X11 port forwarding whenever possible.
+#
+DISPLAYMANAGER_XSERVER_TCP_PORT_6000_OPEN="no"
+
+## Type:    string
+## Default:
+#
+# Define the user whom should get logged in without request. If string
+# is empty, display standard login dialog.
+#
+DISPLAYMANAGER_AUTOLOGIN="howard"
+
+## Type:        yesno
+## Default:     no
+#
+# Allow all users to login without password, but ask for the user, if
+# DISPLAYMANAGER_AUTOLOGIN is empty.
+#
+DISPLAYMANAGER_PASSWORD_LESS_LOGIN="no"
+
+## Type:        yesno
+## Default:     no
+#
+# Display a combobox for Active Directory domains.
+#
+DISPLAYMANAGER_AD_INTEGRATION="no"
+
+## Type:    list(root,all,none,auto)
+## Default: auto
+#
+# Determine who will be able to shutdown or reboot the system in kdm.  Valid
+# values are: "root" (only root can shutdown), "all" (everybody can shutdown),
+# "none" (nobody can shutdown from displaymanager), "auto" (follow
+# System/Security/Permissions/PERMISSION_SECURITY to decide: "easy local" is
+# equal to "all", everything else is equal to "root").  gdm respects the
+# PolicyKit settings for ConsoleKit. Shutdown configuration can be done via
+# the polkit-default-privs mechanism.
+#
+DISPLAYMANAGER_SHUTDOWN="auto"
+## Path:	Desktop/Display manager
+## Description: settings to generate a proper displaymanager config
+## Config:      kdm
+
+## Type:        string
+## Default:
+#
+# Defines extra Server Arguments given to the kdm display manager when
+# starting a local display. Useful to override e.g. the -dpi setting.
+#
+DISPLAYMANAGER_KDM_LOCALARGS=""
+
+## Type:	yesno
+## Default:	yes
+#
+# Allow local access of the user root to your display manager. Note
+# that root can never login if DISPLAYMANAGER_SHUTDOWN is "auto" and
+# System/Security/Permissions/PERMISSION_SECURITY is "paranoid".
+# This settings currently works only with KDM.
+#
+DISPLAYMANAGER_ROOT_LOGIN_LOCAL="yes"
+
+# here are 'some' comments
+EXTRA_VAL4=
+EXTRA_VAL4=
+
+EXTRA_VAL1="" # here are some "more" comments
+EXTRA_VAL2=1
+EXTRA_VAL3='a'

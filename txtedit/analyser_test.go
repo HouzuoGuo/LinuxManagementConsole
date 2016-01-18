@@ -67,13 +67,16 @@ func TestAnalyser2(t *testing.T) {
 	}
 }
 
-var input3 = `# See systemd-system.conf(5) for details.
-
+var input3 = `## See systemd-system.conf(5) for details.
+# a="a"
 [Manager]
 #LogLevel=info
 #LogTarget=journal-or-kmsg
 [Journald]
+[]
+
 haha
+
 `
 
 func TestAnalyser3(t *testing.T) {
