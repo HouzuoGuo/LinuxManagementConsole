@@ -37,3 +37,63 @@ var Systemd = txtedit.AnalyserConfig{
 	SectionEndingSuffixes:        []string{},
 	BeginSectionWithAStatement:   true,
 	EndSectionWithAStatement:     false}
+
+var CronAllowDeny = txtedit.AnalyserConfig{
+	StatementContinuationMarkers: []string{},
+	StatementEndingMarkers:       []string{"\n"},
+	CommentBeginningMarkers:      []string{},
+	TextQuoteStyle:               []string{},
+	SectionBeginningPrefixes:     []string{},
+	SectionBeginningSuffixes:     []string{},
+	SectionEndingPrefixes:        []string{},
+	SectionEndingSuffixes:        []string{},
+	BeginSectionWithAStatement:   false,
+	EndSectionWithAStatement:     false}
+
+var Cron = txtedit.AnalyserConfig{
+	StatementContinuationMarkers: []string{},
+	StatementEndingMarkers:       []string{"\n"},
+	CommentBeginningMarkers:      []string{"#"},
+	TextQuoteStyle:               []string{},
+	SectionBeginningPrefixes:     []string{},
+	SectionBeginningSuffixes:     []string{},
+	SectionEndingPrefixes:        []string{},
+	SectionEndingSuffixes:        []string{},
+	BeginSectionWithAStatement:   false,
+	EndSectionWithAStatement:     false}
+
+var Hosts = txtedit.AnalyserConfig{
+	StatementContinuationMarkers: []string{},
+	StatementEndingMarkers:       []string{"\n"},
+	CommentBeginningMarkers:      []string{"#"},
+	TextQuoteStyle:               []string{},
+	SectionBeginningPrefixes:     []string{},
+	SectionBeginningSuffixes:     []string{},
+	SectionEndingPrefixes:        []string{},
+	SectionEndingSuffixes:        []string{},
+	BeginSectionWithAStatement:   false,
+	EndSectionWithAStatement:     false}
+
+var LoginDefs = txtedit.AnalyserConfig{
+	StatementContinuationMarkers: []string{},
+	StatementEndingMarkers:       []string{"\n"},
+	CommentBeginningMarkers:      []string{"#"},
+	TextQuoteStyle:               []string{},
+	SectionBeginningPrefixes:     []string{},
+	SectionBeginningSuffixes:     []string{},
+	SectionEndingPrefixes:        []string{},
+	SectionEndingSuffixes:        []string{},
+	BeginSectionWithAStatement:   false,
+	EndSectionWithAStatement:     false}
+
+var NsswitchConf = txtedit.AnalyserConfig{
+	StatementContinuationMarkers: []string{},
+	StatementEndingMarkers:       []string{"\n"},
+	CommentBeginningMarkers:      []string{"#"},
+	TextQuoteStyle:               []string{},
+	SectionBeginningPrefixes:     []string{},
+	SectionBeginningSuffixes:     []string{},
+	SectionEndingPrefixes:        []string{},
+	SectionEndingSuffixes:        []string{},
+	BeginSectionWithAStatement:   false,
+	EndSectionWithAStatement:     false}

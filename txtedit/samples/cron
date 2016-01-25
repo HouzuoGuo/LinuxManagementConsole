@@ -1,0 +1,35 @@
+# Runs the logwatch script looking for dmeventd syslog messages.
+# The setup will run on the following interval:
+#	 field          allowed values
+#      -----          --------------
+#      minute            0-59
+#      hour               0-23
+#      day of month  1-31
+#      month            1-12 (or names, see below)
+#      day of week   0-7 (0 or 7 is Sun, or use names)
+#
+# Some samples:
+# */5 * * * * /usr/sbin/logwatch --service dmeventd
+# This will run every five minutes, every hour, every day of the month,
+# every month of the year, every day of the week.
+#
+# 0-59 * * * * /usr/sbin/logwatch --service dmeventd
+# This will run every minute, every hour, every day of the month,
+# every month of the year, every day of the week.
+# (Note: this call also be accomplished with a */1 instead of 0-59)
+
+ 30 * * * * root /usr/sbin/logwatch --service dmeventd
+
+#
+# cron.d/mdadm - regular redundancy checks
+#
+
+# Start checking each month early in the morning.
+# Continue each day until all done
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+0 1 * * 0 root source /etc/sysconfig/mdadm; [ -n "$MDADM_CHECK_DURATION" -a -x /usr/share/mdadm/mdcheck -a $(date +\%d) -le 7 ] && /usr/share/mdadm/mdcheck --duration "$MDADM_CHECK_DURATION"
+0 1 * * 1-6 root source /etc/sysconfig/mdadm; [ -n "$MDADM_CHECK_DURATION" -a -x /usr/share/mdadm/mdcheck ] && /usr/share/mdadm/mdcheck --continue --duration "$MDADM_CHECK_DURATION"
+45 04 * * * /usr/sbin/chkrootkit && /usr/bin/updatedb
+00 06 * * * env DISPLAY=:0.0 gui_appname
+# Some or all of the text above were copied with permission from openSUSE Linux. All credits go to the original author of the respective files.

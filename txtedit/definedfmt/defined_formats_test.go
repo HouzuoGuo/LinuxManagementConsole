@@ -17,7 +17,12 @@ var samples = []struct {
 }{
 	{Sysconfig, "sysconfig"},
 	{Systemd, "systemd"},
-	{Sysctl, "sysctl"}}
+	{Sysctl, "sysctl"},
+	{CronAllowDeny, "cron-allow-deny"},
+	{Cron, "cron"},
+	{Hosts, "hosts"},
+	{LoginDefs, "login.defs"},
+	{NsswitchConf, "nsswitch.conf"}}
 
 func GetTextAround(str string, pos, length int) (ret string) {
 	startPos := pos - length

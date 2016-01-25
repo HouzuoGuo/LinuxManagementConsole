@@ -170,3 +170,5 @@ EXTRA_VAL4=
 EXTRA_VAL1="" # here are some "more" comments
 EXTRA_VAL2=1
 EXTRA_VAL3='a'
+
+# Some or all of the text above were copied with permission from openSUSE Linux. All credits go to the original author of the respective files.
