@@ -5,14 +5,7 @@ import (
 	"testing"
 )
 
-var input = `DirectoryIndex index.html index.html.var
-<Files ~ "^\.ht">
-    <IfModule mod_access_compat.c>
-        Order allow,deny
-        Deny from all
-    </IfModule>
-</Files>
-`
+var input = `# http://httpd.apache.org/docs/2.4/mod/core.html#options`
 
 func TestAnalyser(t *testing.T) {
 	an := NewAnalyser(input, &AnalyserConfig{
@@ -37,10 +30,9 @@ func TestAnalyser(t *testing.T) {
 	}
 }
 
-var input2 = `zone "." in {
-    type hint;
-    file "root.hint";
-    forwarders { 192.0.2.1; 192.0.2.2; };
+var input2 = `#a
+b {
+c;
 };`
 
 func TestAnalyser2(t *testing.T) {

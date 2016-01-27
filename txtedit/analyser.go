@@ -92,8 +92,9 @@ func (an *Analyser) createCommentIfNil(commentStyle string) {
 		an.contextComment.CommentStyle = commentStyle
 		an.debug.Printf("createCommentIfNil: context comment is assigned to %p", an.contextComment)
 	} else {
-		an.contextComment.Content += commentStyle
 		an.debug.Printf("createCommentIfNil: comment style goes into %p", an.contextComment)
+		an.saveMissedCharacters()
+		an.contextComment.Content += commentStyle
 	}
 }
 

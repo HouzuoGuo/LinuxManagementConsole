@@ -1,0 +1,552 @@
+#
+# /etc/apache2/httpd.conf
+#
+# This is the main Apache server configuration file.  It contains the
+# configuration directives that give the server its instructions.
+# See <URL:http://httpd.apache.org/docs/2.4/> for detailed information about
+# the directives.
+
+# Based upon the default apache configuration file that ships with apache,
+# which is based upon the NCSA server configuration files originally by Rob
+# McCool. This file was knocked together by Peter Poeml <poeml+apache@suse.de>.
+
+# If possible, avoid changes to this file. It does mainly contain Include
+# statements and global settings that can/should be overridden in the
+# configuration of your virtual hosts.
+
+# Quickstart guide:
+# http://en.opensuse.org/SDB:Apache_installation
+
+
+# Overview of include files, chronologically:
+#
+# httpd.conf
+#  |
+#  |-- uid.conf  . . . . . . . . . . . . . .  UserID/GroupID to run under
+#  |-- server-tuning.conf  . . . . . . . . .  sizing of the server (how many processes to start, ...)
+#  |-- loadmodule.conf . . . . . . . . . . .  [*] load these modules
+#  |-- listen.conf . . . . . . . . . . . . .  IP adresses / ports to listen on
+#  |-- mod_log_config.conf . . . . . . . . .  define logging formats
+#  |-- global.conf . . . . . . . . . . . . .  [*] server-wide general settings
+#  |-- mod_status.conf . . . . . . . . . . .  restrict access to mod_status (server monitoring)
+#  |-- mod_info.conf . . . . . . . . . . . .  restrict access to mod_info
+#  |-- mod_reqtimeout.conf . . . . . . . . .  set timeout and minimum data rate for receiving requests
+#  |-- mod_cgid-timeout.conf . . . . . . . .  set CGIDScriptTimeout if mod_cgid is loaded/active
+#  |-- mod_usertrack.conf  . . . . . . . . .  defaults for cookie-based user tracking
+#  |-- mod_autoindex-defaults.conf . . . . .  defaults for displaying of server-generated directory listings
+#  |-- mod_mime-defaults.conf  . . . . . . .  defaults for mod_mime configuration
+#  |-- errors.conf . . . . . . . . . . . . .  customize error responses
+#  |-- ssl-global.conf . . . . . . . . . . .  SSL conf that applies to default server _and all_ virtual hosts
+#  |
+#  |-- default-server.conf . . . . . . . . .  set up the default server that replies to non-virtual-host requests
+#  |    |--mod_userdir.conf  . . . . . . . .  enable UserDir (if mod_userdir is loaded)
+#  |    `--conf.d/apache2-manual?conf  . . .  add the docs ('?' = if installed)
+#  |
+#  `-- vhosts.d/ . . . . . . . . . . . . . .  for each virtual host, place one file here
+#       `-- *.conf . . . . . . . . . . . . .     (*.conf is automatically included)
+#
+#
+# Files marked [*] are NOT read when server is started via systemd service. When server
+# is started via service, defaults from /etc/sysconfig/apache2 are taken into account.
+#
+
+
+
+#  Filesystem layout:
+#
+# /etc/apache2/
+#  |-- charset.conv  . . . . . . . . . . . .  for mod_auth_ldap
+#  |-- conf.d/
+#  |   |-- apache2-manual.conf . . . . . . .  conf that comes with apache2-doc
+#  |   |-- mod_php4.conf . . . . . . . . . .  (example) conf that comes with apache2-mod_php4
+#  |   `-- ... . . . . . . . . . . . . . . .  other configuration added by packages
+#  |-- default-server.conf
+#  |-- errors.conf
+#  |-- httpd.conf  . . . . . . . . . . . . .  top level configuration file
+#  |-- listen.conf
+#  |-- magic
+#  |-- mime.types -> ../mime.types
+#  |-- mod_autoindex-defaults.conf
+#  |-- mod_info.conf
+#  |-- mod_log_config.conf
+#  |-- mod_mime-defaults.conf
+#  |-- mod_perl-startup.pl
+#  |-- mod_status.conf
+#  |-- mod_userdir.conf
+#  |-- mod_usertrack.conf
+#  |-- server-tuning.conf
+#  |-- ssl-global.conf
+#  |-- ssl.crl/  . . . . . . . . . . . . . .  PEM-encoded X.509 Certificate Revocation Lists (CRL)
+#  |-- ssl.crt/  . . . . . . . . . . . . . .  PEM-encoded X.509 Certificates
+#  |-- ssl.csr/  . . . . . . . . . . . . . .  PEM-encoded X.509 Certificate Signing Requests
+#  |-- ssl.key/  . . . . . . . . . . . . . .  PEM-encoded RSA Private Keys
+#  |-- ssl.prm/  . . . . . . . . . . . . . .  public DSA Parameter Files
+#  |-- global.conf
+#  |-- loadmodule.conf
+#  |-- uid.conf
+#  `-- vhosts.d/ . . . . . . . . . . . . . .  put your virtual host configuration (*.conf) here
+#      |-- vhost-ssl.template
+#      `-- vhost.template
+
+
+
+### Global Environment ######################################################
+#
+# The directives in this section affect the overall operation of Apache,
+# such as the number of concurrent requests.
+
+# run under this user/group id
+Include /etc/apache2/uid.conf
+
+# - how many server processes to start (server pool regulation)
+# - usage of KeepAlive
+Include /etc/apache2/server-tuning.conf
+
+# ErrorLog: The location of the error log file.
+# If you do not specify an ErrorLog directive within a <VirtualHost>
+# container, error messages relating to that virtual host will be
+# logged here.  If you *do* define an error logfile for a <VirtualHost>
+# container, that host's errors will be logged there and not here.
+ErrorLog /var/log/apache2/error_log
+
+# generated from default value of APACHE_MODULES in /etc/sysconfig/apache2
+<IfDefine !SYSCONFIG>
+  Include /etc/apache2/loadmodule.conf
+</IfDefine>
+
+# IP addresses / ports to listen on
+Include /etc/apache2/listen.conf
+
+# predefined logging formats
+Include /etc/apache2/mod_log_config.conf
+
+# generated from default values of global settings in /etc/sysconfig/apache2
+<IfDefine !SYSCONFIG>
+  Include /etc/apache2/global.conf
+</IfDefine>
+
+# optional mod_status, mod_info
+Include /etc/apache2/mod_status.conf
+Include /etc/apache2/mod_info.conf
+
+# mod_reqtimeout protects the server from the so-called "slowloris"
+# attack: The server is not swamped with requests in fast succession,
+# but with slowly transmitted request headers and body, thereby filling up
+# the request slots until the server runs out of them.
+# mod_reqtimeout is lightweight and should deliver good results
+# with the configured default values. You shouldn't notice it at all.
+Include /etc/apache2/mod_reqtimeout.conf
+
+# Fix for CVE-2014-0231 introduces new configuration parameter
+# CGIDScriptTimeout. This directive and its effect prevent request
+# workers to be eaten until starvation if cgi programs do not send
+# output back to the server within the timout set by CGIDScriptTimeout.
+Include /etc/apache2/mod_cgid-timeout.conf
+
+# optional cookie-based user tracking
+# read the documentation before using it!!
+Include /etc/apache2/mod_usertrack.conf
+
+# configuration of server-generated directory listings
+Include /etc/apache2/mod_autoindex-defaults.conf
+
+# associate MIME types with filename extensions
+TypesConfig /etc/apache2/mime.types
+Include /etc/apache2/mod_mime-defaults.conf
+
+# set up (customizable) error responses
+Include /etc/apache2/errors.conf
+
+# global (server-wide) SSL configuration, that is not specific to
+# any virtual host
+Include /etc/apache2/ssl-global.conf
+
+# forbid access to the entire filesystem by default
+<Directory />
+    Options None
+    AllowOverride None
+    <IfModule !mod_access_compat.c>
+        Require all denied
+    </IfModule>
+    <IfModule mod_access_compat.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</Directory>
+
+# use .htaccess files for overriding,
+AccessFileName .htaccess
+# and never show them
+<Files ~ "^\.ht">
+    <IfModule !mod_access_compat.c>
+        Require all denied
+    </IfModule>
+    <IfModule mod_access_compat.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</Files>
+
+# List of resources to look for when the client requests a directory
+DirectoryIndex index.html index.html.var
+
+### 'Main' server configuration #############################################
+#
+# The directives in this section set up the values used by the 'main'
+# server, which responds to any requests that aren't handled by a
+# <VirtualHost> definition.  These values also provide defaults for
+# any <VirtualHost> containers you may define later in the file.
+#
+# All of these directives may appear inside <VirtualHost> containers,
+# in which case these default settings will be overridden for the
+# virtual host being defined.
+#
+Include /etc/apache2/default-server.conf
+
+
+### Virtual server configuration ############################################
+#
+# VirtualHost: If you want to maintain multiple domains/hostnames on your
+# machine you can setup VirtualHost containers for them. Most configurations
+# use only name-based virtual hosts so the server doesn't need to worry about
+# IP addresses. This is indicated by the asterisks in the directives below.
+#
+# Please see the documentation at
+# <URL:http://httpd.apache.org/docs/2.4/vhosts/>
+# for further details before you try to setup virtual hosts.
+#
+# You may use the command line option '-S' to verify your virtual host
+# configuration.
+#
+IncludeOptional /etc/apache2/vhosts.d/*.conf
+
+
+# Note: instead of adding your own configuration here, consider
+#       adding it in your own file (/etc/apache2/httpd.conf.local)
+#       putting its name into APACHE_CONF_INCLUDE_FILES in
+#       /etc/sysconfig/apache2 -- this will make system updates
+#       easier :)
+
+eo          ISO-8859-3  Esperanto
+el          ISO-8859-7  Greek
+tr          ISO-8859-9  Turkish
+he          ISO-8859-8  Hebrew
+iw          ISO-8859-8  Hebrew
+ar          ISO-8859-6  Arabic
+et          ISO-8859-1  Estonian
+lv          ISO-8859-2  Latvian
+lt          ISO-8859-2  Lithuanian
+Alias /error/ "/usr/share/apache2/error/"
+
+<IfModule mod_negotiation.c>
+<IfModule mod_include.c>
+    <Directory "/usr/share/apache2/error">
+        AllowOverride None
+        Options IncludesNoExec
+        AddOutputFilter Includes html
+        AddHandler type-map var
+        <IfModule !mod_access_compat.c>
+            Require all granted
+        </IfModule>
+        <IfModule mod_access_compat.c>
+            Order allow,deny
+            Allow from all
+        </IfModule>
+        LanguagePriority en cs de es fr it ja ko nl pl pt-br ro sv tr
+        ForceLanguagePriority Prefer Fallback
+    </Directory>
+
+    ErrorDocument 400 /error/HTTP_BAD_REQUEST.html.var
+    ErrorDocument 401 /error/HTTP_UNAUTHORIZED.html.var
+    ErrorDocument 403 /error/HTTP_FORBIDDEN.html.var
+    ErrorDocument 404 /error/HTTP_NOT_FOUND.html.var
+    ErrorDocument 405 /error/HTTP_METHOD_NOT_ALLOWED.html.var
+    ErrorDocument 408 /error/HTTP_REQUEST_TIME_OUT.html.var
+    ErrorDocument 410 /error/HTTP_GONE.html.var
+    ErrorDocument 411 /error/HTTP_LENGTH_REQUIRED.html.var
+    ErrorDocument 412 /error/HTTP_PRECONDITION_FAILED.html.var
+    ErrorDocument 413 /error/HTTP_REQUEST_ENTITY_TOO_LARGE.html.var
+    ErrorDocument 414 /error/HTTP_REQUEST_URI_TOO_LARGE.html.var
+    ErrorDocument 415 /error/HTTP_UNSUPPORTED_MEDIA_TYPE.html.var
+    ErrorDocument 500 /error/HTTP_INTERNAL_SERVER_ERROR.html.var
+    ErrorDocument 501 /error/HTTP_NOT_IMPLEMENTED.html.var
+    ErrorDocument 502 /error/HTTP_BAD_GATEWAY.html.var
+    ErrorDocument 503 /error/HTTP_SERVICE_UNAVAILABLE.html.var
+    ErrorDocument 506 /error/HTTP_VARIANT_ALSO_VARIES.html.var
+</IfModule>
+</IfModule>
+##
+##  SSL Global Context
+##
+##  All SSL configuration in this context applies both to
+##  the main server and all SSL-enabled virtual hosts.
+##
+
+# These are the configuration directives to instruct the server how to
+# serve pages over an https connection. For detailing information about these
+# directives see <URL:http://httpd.apache.org/docs/2.4/mod/mod_ssl.html>
+#
+# Do NOT simply read the instructions in here without understanding
+# what they do.  They're here only as hints or reminders.  If you are unsure
+# consult the online docs. You have been warned.
+
+# This global SSL configuration is ignored if
+# "SSL" is not defined, or if "NOSSL" is defined.
+<IfDefine SSL>
+<IfDefine !NOSSL>
+<IfModule mod_ssl.c>
+
+	#
+	#   Some MIME-types for downloading Certificates and CRLs
+	#
+	AddType application/x-x509-ca-cert .crt
+	AddType application/x-pkcs7-crl    .crl
+
+	#   Pass Phrase Dialog:
+	#   Configure the pass phrase gathering process.
+	#   The filtering dialog program (`builtin' is a internal
+	#   terminal dialog) has to provide the pass phrase on stdout.
+	<IfDefine SYSTEMD>
+	SSLPassPhraseDialog exec:/usr/sbin/apache2-systemd-ask-pass
+	</IfDefine>
+	<IfDefine !SYSTEMD>
+	SSLPassPhraseDialog  builtin
+	</IfDefine>
+
+	#   Inter-Process Session Cache:
+	#   Configure the SSL Session Cache: First the mechanism
+	#   to use and second the expiring timeout (in seconds).
+	#   Note that on most platforms shared memory segments are not allowed to be on
+	#   network-mounted drives, so in that case you need to use the dbm method.
+	#SSLSessionCache        none
+	#<IfModule mod_socache_dbm.c>
+	#SSLSessionCache         dbm:/var/lib/apache2/ssl_scache
+	#</IfModule>
+
+        <IfModule mod_socache_shmcb.c>
+	SSLSessionCache         shmcb:/var/lib/apache2/ssl_scache(512000)
+        </IfModule>
+
+	SSLSessionCacheTimeout  300
+
+
+	#   Pseudo Random Number Generator (PRNG):
+	#   Configure one or more sources to seed the PRNG of the
+	#   SSL library. The seed data should be of good random quality.
+	#   WARNING! On some platforms /dev/random blocks if not enough entropy
+	#   is available. This means you then cannot use the /dev/random device
+	#   because it would lead to very long connection times (as long as
+	#   it requires to make more entropy available). But usually those
+	#   platforms additionally provide a /dev/urandom device which doesn't
+	#   block. So, if available, use this one instead. Read the mod_ssl User
+	#   Manual for more details.
+	SSLRandomSeed startup builtin
+	SSLRandomSeed connect builtin
+	#SSLRandomSeed startup file:/dev/random  512
+	#SSLRandomSeed connect file:/dev/random  512
+	#SSLRandomSeed startup file:/dev/urandom 512
+	#SSLRandomSeed connect file:/dev/urandom 512
+
+	#  SSL protocols
+	#  Supporting TLS only is adequate nowadays
+	SSLProtocol all -SSLv2 -SSLv3
+
+	#   SSL Cipher Suite:
+	#   List the ciphers that the client is permitted to negotiate.
+	#   See the mod_ssl documentation for a complete list.
+        SSLCipherSuite ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA
+
+	#   SSLHonorCipherOrder
+	#   If SSLHonorCipherOrder is disabled, then the client's preferences
+	#   for chosing the cipher during the TLS handshake are used.
+	#   If set to on, then the above SSLCipherSuite is used, in the order
+	#   given, with the first supported match on both ends.
+	SSLHonorCipherOrder on
+
+	#   Server Certificate:
+	#   Point SSLCertificateFile at a PEM encoded certificate.  If
+	#   the certificate is encrypted, then you will be prompted for a
+	#   pass phrase.  Note that a kill -HUP will prompt again.  Keep
+	#   in mind that if you have both an RSA and a DSA certificate you
+	#   can configure both in parallel (to also allow the use of DSA
+	#   ciphers, etc.)
+	#SSLCertificateFile /etc/apache2/ssl.crt/server.crt
+	#SSLCertificateFile /etc/apache2/ssl.crt/server-dsa.crt
+
+	#   Server Private Key:
+	#   If the key is not combined with the certificate, use this
+	#   directive to point at the key file.  Keep in mind that if
+	#   you've both a RSA and a DSA private key you can configure
+	#   both in parallel (to also allow the use of DSA ciphers, etc.)
+	#SSLCertificateKeyFile /etc/apache2/ssl.key/server.key
+	#SSLCertificateKeyFile /etc/apache2/ssl.key/server-dsa.key
+
+	#   Server Certificate Chain:
+	#   Point SSLCertificateChainFile at a file containing the
+	#   concatenation of PEM encoded intermediate CA
+	#   certificates which form the certificate chain for the
+	#   server certificate. Alternatively the referenced file
+	#   can be the same as SSLCertificateFile when the CA
+	#   certificates are directly appended to the server
+	#   certificate for convinience.
+	#SSLCertificateChainFile /etc/apache2/ssl.crt/chain.crt
+
+	#   Certificate Authority (CA):
+	#   Set the CA certificate verification path where to find CA
+	#   certificates for client authentication or alternatively one
+	#   huge file containing all of them (file must be PEM encoded)
+	#   Note: Inside SSLCACertificatePath you need hash symlinks
+	#         to point to the certificate files. Use the provided
+	#         Makefile to update the hash symlinks after changes.
+	#SSLCACertificatePath /etc/apache2/ssl.crt
+	#SSLCACertificateFile /etc/apache2/ssl.crt/ca-bundle.crt
+
+	#   Certificate Revocation Lists (CRL):
+	#   Set the CA revocation path where to find CA CRLs for client
+	#   authentication or alternatively one huge file containing all
+	#   of them (file must be PEM encoded)
+	#   Note: Inside SSLCARevocationPath you need hash symlinks
+	#         to point to the certificate files. Use the provided
+	#         Makefile to update the hash symlinks after changes.
+	#SSLCARevocationPath /etc/apache2/ssl.crl
+	#SSLCARevocationFile /etc/apache2/ssl.crl/ca-bundle.crl
+
+</IfModule>
+</IfDefine>
+</IfDefine>
+#
+# VirtualHost template
+# Note: to use the template, rename it to /etc/apache2/vhost.d/yourvhost.conf.
+# Files must have the .conf suffix to be loaded.
+#
+# See /usr/share/doc/packages/apache2/README.QUICKSTART for further hints
+# about virtual hosts.
+#
+# NameVirtualHost statements can be added to /etc/apache2/listen.conf.
+#
+# Almost any Apache directive may go into a VirtualHost container.
+# The first VirtualHost section is used for requests without a known
+# server name.
+#
+<VirtualHost *:80>
+    ServerAdmin webmaster@dummy-host.example.com
+    ServerName dummy-host.example.com
+
+    # DocumentRoot: The directory out of which you will serve your
+    # documents. By default, all requests are taken from this directory, but
+    # symbolic links and aliases may be used to point to other locations.
+    DocumentRoot /srv/www/vhosts/dummy-host.example.com
+
+    # if not specified, the global error log is used
+    ErrorLog /var/log/apache2/dummy-host.example.com-error_log
+    CustomLog /var/log/apache2/dummy-host.example.com-access_log combined
+
+    # don't loose time with IP address lookups
+    HostnameLookups Off
+
+    # needed for named virtual hosts
+    UseCanonicalName Off
+
+    # configures the footer on server-generated documents
+    ServerSignature On
+
+
+    # Optionally, include *.conf files from /etc/apache2/conf.d/
+    #
+    # For example, to allow execution of PHP scripts:
+    #
+    # Include /etc/apache2/conf.d/php5.conf
+    #
+    # or, to include all configuration snippets added by packages:
+    # Include /etc/apache2/conf.d/*.conf
+
+
+    # ScriptAlias: This controls which directories contain server scripts.
+    # ScriptAliases are essentially the same as Aliases, except that
+    # documents in the realname directory are treated as applications and
+    # run by the server when requested rather than as documents sent to the client.
+    # The same rules about trailing "/" apply to ScriptAlias directives as to
+    # Alias.
+    #
+    ScriptAlias /cgi-bin/ "/srv/www/vhosts/dummy-host.example.com/cgi-bin/"
+
+    # "/srv/www/cgi-bin" should be changed to whatever your ScriptAliased
+    # CGI directory exists, if you have one, and where ScriptAlias points to.
+    #
+    <Directory "/srv/www/vhosts/dummy-host.example.com/cgi-bin">
+	AllowOverride None
+	Options +ExecCGI -Includes
+        <IfModule !mod_access_compat.c>
+      	    Require all granted
+        </IfModule>
+        <IfModule mod_access_compat.c>
+	    Order allow,deny
+	    Allow from all
+	</IfModule>
+    </Directory>
+
+
+    # UserDir: The name of the directory that is appended onto a user's home
+    # directory if a ~user request is received.
+    #
+    # To disable it, simply remove userdir from the list of modules in APACHE_MODULES
+    # in /etc/sysconfig/apache2.
+    #
+    <IfModule mod_userdir.c>
+	# Note that the name of the user directory ("public_html") cannot simply be
+	# changed here, since it is a compile time setting. The apache package
+	# would have to be rebuilt. You could work around by deleting
+	# /usr/sbin/suexec, but then all scripts from the directories would be
+	# executed with the UID of the webserver.
+	UserDir public_html
+	# The actual configuration of the directory is in
+	# /etc/apache2/mod_userdir.conf.
+	Include /etc/apache2/mod_userdir.conf
+	# You can, however, change the ~ if you find it awkward, by mapping e.g.
+	# http://www.example.com/users/karl-heinz/ --> /home/karl-heinz/public_html/
+	#AliasMatch ^/users/([a-zA-Z0-9-_.]*)/?(.*) /home/$1/public_html/$2
+    </IfModule>
+
+
+    #
+    # This should be changed to whatever you set DocumentRoot to.
+    #
+    <Directory "/srv/www/vhosts/dummy-host.example.com">
+
+	#
+	# Possible values for the Options directive are "None", "All",
+	# or any combination of:
+	#   Indexes Includes FollowSymLinks SymLinksifOwnerMatch ExecCGI MultiViews
+	#
+	# Note that "MultiViews" must be named *explicitly* --- "Options All"
+	# doesn't give it to you.
+	#
+	# The Options directive is both complicated and important.  Please see
+	# http://httpd.apache.org/docs/2.4/mod/core.html#options
+	# for more information.
+	#
+	Options Indexes FollowSymLinks
+
+	#
+	# AllowOverride controls what directives may be placed in .htaccess files.
+	# It can be "All", "None", or any combination of the keywords:
+	#   Options FileInfo AuthConfig Limit
+	#
+	AllowOverride None
+
+	#
+	# Controls who can get stuff from this server.
+	#
+	<IfModule !mod_access_compat.c>
+	    Require all granted
+	</IfModule>
+	<IfModule mod_access_compat.c>
+	    Order allow,deny
+	    Allow from all
+	</IfModule>
+
+    </Directory>
+
+</VirtualHost>
+
+# Some or all of the text above were copied with permission from openSUSE Linux. All credits go to the original author of the respective files.

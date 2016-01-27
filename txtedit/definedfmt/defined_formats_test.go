@@ -22,7 +22,11 @@ var samples = []struct {
 	{Cron, "cron"},
 	{Hosts, "hosts"},
 	{LoginDefs, "login.defs"},
-	{NsswitchConf, "nsswitch.conf"}}
+	{NsswitchConf, "nsswitch.conf"},
+	{Httpd, "httpd"},
+	{NamedZone, "named-zone"},
+	{Named, "named"},
+}
 
 func GetTextAround(str string, pos, length int) (ret string) {
 	startPos := pos - length
@@ -45,6 +49,7 @@ func TestTextBreakdown(t *testing.T) {
 		txtInputStr := string(txtInput)
 
 		analyser := txtedit.NewAnalyser(txtInputStr, &sample.config, &txtedit.PrintDebugger{})
+		fmt.Println("@@@@@@@@@@@@@@Going to analyse", sample.fileName)
 		rootNode := analyser.Run()
 		reproducedText := rootNode.TextString()
 		fmt.Println(txtedit.DebugNode(rootNode, 0))

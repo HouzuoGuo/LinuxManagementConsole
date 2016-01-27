@@ -97,3 +97,39 @@ var NsswitchConf = txtedit.AnalyserConfig{
 	SectionEndingSuffixes:        []string{},
 	BeginSectionWithAStatement:   false,
 	EndSectionWithAStatement:     false}
+
+var Httpd = txtedit.AnalyserConfig{
+	StatementContinuationMarkers: []string{"\\"},
+	StatementEndingMarkers:       []string{"\n"},
+	CommentBeginningMarkers:      []string{"#"},
+	TextQuoteStyle:               []string{"\"", "'"},
+	SectionBeginningPrefixes:     []string{"<"},
+	SectionBeginningSuffixes:     []string{">"},
+	SectionEndingPrefixes:        []string{"</"},
+	SectionEndingSuffixes:        []string{">"},
+	BeginSectionWithAStatement:   true,
+	EndSectionWithAStatement:     true}
+
+var Named = txtedit.AnalyserConfig{
+	StatementContinuationMarkers: []string{"\\"},
+	StatementEndingMarkers:       []string{";"},
+	CommentBeginningMarkers:      []string{"#"},
+	TextQuoteStyle:               []string{"\"", "'"},
+	SectionBeginningPrefixes:     []string{},
+	SectionBeginningSuffixes:     []string{"{"},
+	SectionEndingPrefixes:        []string{},
+	SectionEndingSuffixes:        []string{"};"},
+	BeginSectionWithAStatement:   true,
+	EndSectionWithAStatement:     false}
+
+var NamedZone = txtedit.AnalyserConfig{
+	StatementContinuationMarkers: []string{},
+	StatementEndingMarkers:       []string{"\n"},
+	CommentBeginningMarkers:      []string{";"},
+	TextQuoteStyle:               []string{},
+	SectionBeginningPrefixes:     []string{},
+	SectionBeginningSuffixes:     []string{"("},
+	SectionEndingPrefixes:        []string{},
+	SectionEndingSuffixes:        []string{");"},
+	BeginSectionWithAStatement:   true,
+	EndSectionWithAStatement:     false}
