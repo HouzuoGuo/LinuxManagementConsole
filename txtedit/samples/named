@@ -182,8 +182,15 @@ controls {
 	#} keys { rndc-key; };
 };
 
+// this is a comment in C single line style
 zone "10a.com" { type master; notify no; file "null.zone.file"; };
+# this is a comment in shell style
 zone "10b.com" { type master; notify no; file "null.zone.file"; };
+/* this is
+ a multi-line comment
+ in c style
+*/
 zone "10c.com" { type master; notify no; file "null.zone.file"; };
+
 
 # Some or all of the text above were copied with permission from openSUSE Linux. All credits go to the original author of the respective files.

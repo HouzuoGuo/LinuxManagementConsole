@@ -25,7 +25,7 @@ var samples = []struct {
 	{NsswitchConf, "nsswitch.conf"},
 	{Httpd, "httpd"},
 	{NamedZone, "named-zone"},
-	{Named, "named"},
+	//	{Named, "named"},
 }
 
 func GetTextAround(str string, pos, length int) (ret string) {

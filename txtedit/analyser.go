@@ -14,10 +14,11 @@ type Analyser struct {
 	rootNode               *DocumentNode // the root node of the broken down document
 	thisNode               *DocumentNode // reference to the current document node
 
-	ignoreNewStatementOnce bool       // do not create the next new statement caused by statement continuation marker
-	contextText            *Text      // reference to the current text entity
-	contextComment         *Comment   // reference to the current comment entity
-	contextStatement       *Statement // reference to the current statement
+	ignoreNewStatementOnce bool          // do not create the next new statement caused by statement continuation marker
+	contextText            *Text         // reference to the current text entity
+	contextComment         *Comment      // reference to the current comment entity
+	contextCommentStyle    *CommentStyle // reference to the comment style that opened the current comment entity
+	contextStatement       *Statement    // reference to the current statement
 }
 
 // Initialise a new text analyser.
@@ -25,8 +26,8 @@ func NewAnalyser(textInput string, config *AnalyserConfig, debugger AnalyzerDebu
 	ret = &Analyser{textInput: textInput, config: config, debug: debugger}
 	ret.thisNode = &DocumentNode{Parent: nil, Obj: nil, Leaves: make([]*DocumentNode, 0, 8)}
 	ret.rootNode = ret.thisNode
-	ret.config.DetectSectionMatchMechanism()
-	ret.debug.Printf("NewAnalyser: initialised with section match mechanism being %v", ret.config.SectionMatchMechanism)
+	ret.config.SectionStyle.SetSectionMatchMechanism()
+	ret.debug.Printf("NewAnalyser: initialised with section match mechanism being %v", ret.config.SectionStyle.SectionMatchMechanism)
 	return
 }
 
@@ -141,6 +142,7 @@ func (an *Analyser) createStatementIfNil() {
 
 // Move context text and comment into context statement (create new statement if necessary), and clear context statement.
 func (an *Analyser) endStatement(ending string) {
+	an.debug.Printf("endStatement: trying to end with %v", []byte(ending))
 	if an.contextText != nil && an.contextText.QuoteStyle != "" {
 		an.saveMissedCharacters()
 		an.debug.Printf("endStatement: the statement ending goes into context text %p", an.contextText)
@@ -344,7 +346,7 @@ func (an *Analyser) endSection() {
 		an.debug.Printf("endSection: trying to finish section in node %p", an.thisNode)
 		// Calculate the first and final statements
 		minNumLeaves := 0
-		if an.config.BeginSectionWithAStatement {
+		if an.config.SectionStyle.BeginSectionWithAStatement {
 			/*
 				If prefix styles are empty, the text should look like:
 				sectionA {
@@ -358,7 +360,7 @@ func (an *Analyser) endSection() {
 				</sectionA>
 				Then the first statement is the section node's first leaf.
 			*/
-			if len(an.config.SectionBeginningPrefixes) == 0 {
+			if an.config.SectionStyle.OpeningPrefix == "" {
 				sect.FirstStatement = an.removePreviousSiblingStatement()
 				an.debug.Printf("endSection: first statement is the previous sibling %p", sect.FirstStatement)
 			} else {
@@ -378,7 +380,7 @@ func (an *Analyser) endSection() {
 				}
 			}
 		}
-		if an.config.EndSectionWithAStatement {
+		if an.config.SectionStyle.EndSectionWithAStatement {
 			/*
 				Rather than two scenarios supported by BeginSectionWithAStatement, there is only one scenario
 				to deal with here, the section ending must use both prefixes and suffixes, like this:
@@ -386,7 +388,7 @@ func (an *Analyser) endSection() {
 				content
 				</sectionA>     <=== "sectionA" is the ending statement
 			*/
-			if len(an.config.SectionEndingPrefixes) > 0 && len(an.config.SectionEndingSuffixes) > 0 {
+			if an.config.SectionStyle.ClosingPrefix != "" && an.config.SectionStyle.ClosingSuffix != "" {
 				// minNumLeaves is 0 if section does not begin with statement that is also the section's leaf
 				// minNumLeaves is 1 if section begins with a statement that is the section's leaf
 				if len(an.thisNode.Leaves) > minNumLeaves {
@@ -440,7 +442,7 @@ func (an *Analyser) getSectionState() (SectionState, *Section) {
 		return SECTION_STATE_BEFORE_BEGIN, nil
 	}
 	var state SectionState
-	switch an.config.SectionMatchMechanism {
+	switch an.config.SectionStyle.SectionMatchMechanism {
 	case SECTION_MATCH_FLAT_SINGLE_ANCHOR:
 		if section.BeginPrefix == "" {
 			state = SECTION_STATE_BEFORE_BEGIN
@@ -494,8 +496,8 @@ func (an *Analyser) setSectionBeginPrefix(prefix string) {
 		an.debug.Printf("setSectionBeginPrefix: create a new section from node %p", an.thisNode)
 		an.createSection()
 		an.thisNode.Parent.Obj.(*Section).BeginPrefix = prefix
-	} else if an.config.SectionMatchMechanism == SECTION_MATCH_FLAT_DOUBLE_ANCHOR ||
-		an.config.SectionMatchMechanism == SECTION_MATCH_FLAT_DOUBLE_ANCHOR {
+	} else if an.config.SectionStyle.SectionMatchMechanism == SECTION_MATCH_FLAT_DOUBLE_ANCHOR ||
+		an.config.SectionStyle.SectionMatchMechanism == SECTION_MATCH_FLAT_DOUBLE_ANCHOR {
 		// Already in a section but document does not allow nested section
 		an.debug.Printf("setSectionBeginPrefix: end section of node %p and create a new section", an.thisNode.Parent)
 		an.endSection()
@@ -525,7 +527,7 @@ func (an *Analyser) setSectionBeginSuffix(suffix string) {
 		an.debug.Printf("setSectionBeginSuffix: end section right now")
 		sect.BeginSuffix = suffix
 		an.endSection()
-	} else if an.config.SectionMatchMechanism == SECTION_MATCH_NESTED_DOUBLE_ANCHOR {
+	} else if an.config.SectionStyle.SectionMatchMechanism == SECTION_MATCH_NESTED_DOUBLE_ANCHOR {
 		// Create a section or nested section
 		an.debug.Printf("setSectionBeginSuffix: create a new section/nested section from node %p", an.thisNode)
 		an.createSection()
@@ -570,12 +572,31 @@ func (an *Analyser) setSectionEndSuffix(suffix string) {
 		an.debug.Printf("setSectionEndSuffix: end section right now")
 		sect.EndSuffix = suffix
 		an.endSection()
-	} else if state < SECTION_STATE_HAS_END_PREFIX && an.config.AmbiguousSectionSuffix {
+	} else if state < SECTION_STATE_HAS_END_PREFIX && an.config.SectionStyle.AmbiguousSectionSuffix {
 		an.debug.Printf("setSectionEndSuffix: call setSectionSetBeginSuffix due to ambiguous suffix choice")
 		an.setSectionBeginSuffix(suffix)
 	} else {
 		an.debug.Printf("EndSectionSetSuffix: set suffix")
 		sect.EndSuffix = suffix
+	}
+}
+
+// Look for the string from position here. Return the matching string and length of the match.
+func (an *Analyser) lookFor(match string) (string, int) {
+	if len(match) == 1 {
+		// Match single character
+		if an.textInput[an.herePosition] == match[0] {
+			return match, 1
+		}
+		return "", 0
+	} else {
+		// Match string more than two characters long
+		if an.herePosition+len(match) > len(an.textInput) {
+			return "", 0
+		} else if string(an.textInput[an.herePosition:an.herePosition+len(match)]) != match {
+			return "", 0
+		}
+		return match, len(match)
 	}
 }
 
@@ -658,7 +679,7 @@ func (an *Analyser) Run() *DocumentNode {
 	for an.herePosition = 0; an.herePosition < len(an.textInput); an.herePosition += advance {
 		var match string  // the marker string immediate ahead
 		var spaces string // number of consecutive spaces immediate ahead
-		if match, advance = an.lookForAnyOf(an.config.CommentBeginningMarkers); advance > 0 {
+		if match, advance = an.lookFor(an.config.CommentStyle.Opening); advance > 0 {
 			an.debug.Printf("Comment: %s", match)
 			an.createCommentIfNil(match)
 			an.previousMarkerPosition = an.herePosition + advance
@@ -678,19 +699,19 @@ func (an *Analyser) Run() *DocumentNode {
 			an.debug.Printf("Statement ending: %v", []byte(match))
 			an.endStatement(match)
 			an.previousMarkerPosition = an.herePosition + advance
-		} else if match, advance = an.lookForAnyOf(an.config.SectionEndingSuffixes); advance > 0 {
+		} else if match, advance = an.lookFor(an.config.SectionStyle.ClosingSuffix); advance > 0 {
 			an.debug.Printf("Section ending suffix: %s", match)
 			an.setSectionEndSuffix(match)
 			an.previousMarkerPosition = an.herePosition + advance
-		} else if match, advance = an.lookForAnyOf(an.config.SectionEndingPrefixes); advance > 0 {
+		} else if match, advance = an.lookFor(an.config.SectionStyle.ClosingPrefix); advance > 0 {
 			an.debug.Printf("Section ending prefix: %s", match)
 			an.setSectionEndPrefix(match)
 			an.previousMarkerPosition = an.herePosition + advance
-		} else if match, advance = an.lookForAnyOf(an.config.SectionBeginningSuffixes); advance > 0 {
+		} else if match, advance = an.lookFor(an.config.SectionStyle.OpeningSuffix); advance > 0 {
 			an.debug.Printf("Section beginning suffix: %s", match)
 			an.setSectionBeginSuffix(match)
 			an.previousMarkerPosition = an.herePosition + advance
-		} else if match, advance = an.lookForAnyOf(an.config.SectionBeginningPrefixes); advance > 0 {
+		} else if match, advance = an.lookFor(an.config.SectionStyle.OpeningPrefix); advance > 0 {
 			an.debug.Printf("Section beginning prefix: %s", match)
 			an.setSectionBeginPrefix(match)
 			an.previousMarkerPosition = an.herePosition + advance

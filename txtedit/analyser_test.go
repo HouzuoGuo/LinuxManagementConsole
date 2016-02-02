@@ -11,14 +11,14 @@ func TestAnalyser(t *testing.T) {
 	an := NewAnalyser(input, &AnalyserConfig{
 		StatementContinuationMarkers: []string{"\\"},
 		StatementEndingMarkers:       []string{"\n"},
-		CommentBeginningMarkers:      []string{"#"},
+		CommentStyle:                 CommentStyle{Opening: "#"},
 		TextQuoteStyle:               []string{"\"", "'"},
-		SectionBeginningPrefixes:     []string{"<"},
-		SectionBeginningSuffixes:     []string{">"},
-		SectionEndingPrefixes:        []string{"</"},
-		SectionEndingSuffixes:        []string{">"},
-		BeginSectionWithAStatement:   true,
-		EndSectionWithAStatement:     true},
+		SectionStyle: SectionStyle{
+			OpeningPrefix: "<", OpeningSuffix: ">",
+			ClosingPrefix: "</", ClosingSuffix: ">",
+			BeginSectionWithAStatement: true, EndSectionWithAStatement: true,
+		},
+	},
 		&PrintDebugger{})
 
 	an.Run()
@@ -40,14 +40,14 @@ func TestAnalyser2(t *testing.T) {
 		&AnalyserConfig{
 			StatementContinuationMarkers: []string{"\\"},
 			StatementEndingMarkers:       []string{";"},
-			CommentBeginningMarkers:      []string{"#"},
+			CommentStyle:                 CommentStyle{Opening: "#"},
 			TextQuoteStyle:               []string{"\"", "'"},
-			SectionBeginningPrefixes:     []string{},
-			SectionBeginningSuffixes:     []string{"{"},
-			SectionEndingPrefixes:        []string{},
-			SectionEndingSuffixes:        []string{"};"},
-			BeginSectionWithAStatement:   true,
-			EndSectionWithAStatement:     false},
+			SectionStyle: SectionStyle{
+				OpeningPrefix: "", OpeningSuffix: "{",
+				ClosingPrefix: "", ClosingSuffix: "};",
+				BeginSectionWithAStatement: true, EndSectionWithAStatement: false,
+			},
+		},
 		&PrintDebugger{})
 
 	an.Run()
@@ -76,14 +76,14 @@ func TestAnalyser3(t *testing.T) {
 		&AnalyserConfig{
 			StatementContinuationMarkers: []string{},
 			StatementEndingMarkers:       []string{"\n"},
-			CommentBeginningMarkers:      []string{"#"},
+			CommentStyle:                 CommentStyle{Opening: "#"},
 			TextQuoteStyle:               []string{"\""},
-			SectionBeginningPrefixes:     []string{"["},
-			SectionBeginningSuffixes:     []string{"]"},
-			SectionEndingPrefixes:        []string{},
-			SectionEndingSuffixes:        []string{},
-			BeginSectionWithAStatement:   true,
-			EndSectionWithAStatement:     false},
+			SectionStyle: SectionStyle{
+				OpeningPrefix: "[", OpeningSuffix: "]",
+				ClosingPrefix: "", ClosingSuffix: "",
+				BeginSectionWithAStatement: true, EndSectionWithAStatement: false,
+			},
+		},
 		&PrintDebugger{})
 
 	an.Run()
