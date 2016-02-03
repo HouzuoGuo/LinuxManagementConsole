@@ -14,11 +14,10 @@ type Analyser struct {
 	rootNode               *DocumentNode // the root node of the broken down document
 	thisNode               *DocumentNode // reference to the current document node
 
-	ignoreNewStatementOnce bool          // do not create the next new statement caused by statement continuation marker
-	contextText            *Text         // reference to the current text entity
-	contextComment         *Comment      // reference to the current comment entity
-	contextCommentStyle    *CommentStyle // reference to the comment style that opened the current comment entity
-	contextStatement       *Statement    // reference to the current statement
+	ignoreNewStatementOnce bool       // do not create the next new statement caused by statement continuation marker
+	contextText            *Text      // reference to the current text entity
+	contextComment         *Comment   // reference to the current comment entity
+	contextStatement       *Statement // reference to the current statement
 }
 
 // Initialise a new text analyser.
@@ -87,7 +86,7 @@ func (an *Analyser) createLeaf() {
 }
 
 // If comment context is nil, assign the context a new comment entity.
-func (an *Analyser) createCommentIfNil(commentStyle string) {
+func (an *Analyser) createCommentIfNil(commentStyle CommentStyle) {
 	if an.contextComment == nil {
 		an.contextComment = new(Comment)
 		an.contextComment.CommentStyle = commentStyle
@@ -95,15 +94,16 @@ func (an *Analyser) createCommentIfNil(commentStyle string) {
 	} else {
 		an.debug.Printf("createCommentIfNil: comment style goes into %p", an.contextComment)
 		an.saveMissedCharacters()
-		an.contextComment.Content += commentStyle
+		//		an.contextComment.Content += commentStyle
 	}
 }
 
 // If comment context is not nil, move the comment into statement context and clear comment context.
-func (an *Analyser) endComment() {
+func (an *Analyser) endComment(closed bool) {
 	if an.contextComment == nil {
 		return
 	}
+	an.contextComment.Closed = closed
 	an.saveMissedCharacters()
 	an.createStatementIfNil()
 	an.contextStatement.Pieces = append(an.contextStatement.Pieces, an.contextComment)
@@ -151,7 +151,7 @@ func (an *Analyser) endStatement(ending string) {
 	}
 	// Organise context objects
 	an.saveMissedCharacters()
-	an.endComment()
+	an.endComment(false)
 	an.endText()
 	if an.ignoreNewStatementOnce {
 		an.debug.Printf("endStatement: not creating new document node when ignoreNewStatementOnce is set")
@@ -277,7 +277,7 @@ func (an *Analyser) continueStatement(marker string) {
 		return
 	}
 	an.saveMissedCharacters()
-	an.endComment()
+	an.endComment(false)
 	an.endText()
 	an.createStatementIfNil()
 	an.contextStatement.Pieces = append(an.contextStatement.Pieces, &StatementContinue{Style: marker})
@@ -667,6 +667,40 @@ func (an *Analyser) setQuote(quoteStyle string) {
 	}
 }
 
+// Tell the analyser to open a comment if the text at position here matches any comment opening style.
+func (an *Analyser) isOpeningComment() int {
+	if an.contextComment != nil {
+		// A comment is already open, so it is not possible to open another comment.
+		return 0
+	}
+	for _, style := range an.config.CommentStyles {
+		if match, advance := an.lookFor(style.Opening); advance > 0 {
+			an.debug.Printf("Comment opening: %s", match)
+			an.createCommentIfNil(style)
+			return advance
+		}
+	}
+	return 0
+}
+
+// Tell the analyser to close a comment if the text at position here matches any comment closing style.
+func (an *Analyser) isClosingComment() int {
+	if an.contextComment == nil {
+		// Comment has not been opened, so it is not possible to close a comment.
+		return 0
+	}
+	for _, style := range an.config.CommentStyles {
+		if match, advance := an.lookFor(style.Closing); advance > 0 {
+			if match == an.contextComment.CommentStyle.Closing {
+				an.debug.Printf("Comment closing: %s", match)
+				an.endComment(true)
+				return advance
+			}
+		}
+	}
+	return 0
+}
+
 // Break down input text according to analyser's configuration. Return the root document node.
 func (an *Analyser) Run() *DocumentNode {
 	/*
@@ -679,9 +713,9 @@ func (an *Analyser) Run() *DocumentNode {
 	for an.herePosition = 0; an.herePosition < len(an.textInput); an.herePosition += advance {
 		var match string  // the marker string immediate ahead
 		var spaces string // number of consecutive spaces immediate ahead
-		if match, advance = an.lookFor(an.config.CommentStyle.Opening); advance > 0 {
-			an.debug.Printf("Comment: %s", match)
-			an.createCommentIfNil(match)
+		if advance = an.isOpeningComment(); advance > 0 {
+			an.previousMarkerPosition = an.herePosition + advance
+		} else if advance = an.isClosingComment(); advance > 0 {
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookForAnyOf(an.config.TextQuoteStyle); advance > 0 {
 			an.debug.Printf("Quote: %s", match)
@@ -700,19 +734,19 @@ func (an *Analyser) Run() *DocumentNode {
 			an.endStatement(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookFor(an.config.SectionStyle.ClosingSuffix); advance > 0 {
-			an.debug.Printf("Section ending suffix: %s", match)
+			an.debug.Printf("Section closing suffix: %s", match)
 			an.setSectionEndSuffix(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookFor(an.config.SectionStyle.ClosingPrefix); advance > 0 {
-			an.debug.Printf("Section ending prefix: %s", match)
+			an.debug.Printf("Section closing prefix: %s", match)
 			an.setSectionEndPrefix(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookFor(an.config.SectionStyle.OpeningSuffix); advance > 0 {
-			an.debug.Printf("Section beginning suffix: %s", match)
+			an.debug.Printf("Section opening suffix: %s", match)
 			an.setSectionBeginSuffix(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookFor(an.config.SectionStyle.OpeningPrefix); advance > 0 {
-			an.debug.Printf("Section beginning prefix: %s", match)
+			an.debug.Printf("Section opening prefix: %s", match)
 			an.setSectionBeginPrefix(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else {

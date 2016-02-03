@@ -11,7 +11,7 @@ func TestAnalyser(t *testing.T) {
 	an := NewAnalyser(input, &AnalyserConfig{
 		StatementContinuationMarkers: []string{"\\"},
 		StatementEndingMarkers:       []string{"\n"},
-		CommentStyle:                 CommentStyle{Opening: "#"},
+		CommentStyles:                []CommentStyle{CommentStyle{Opening: "#", Closing: "\n"}},
 		TextQuoteStyle:               []string{"\"", "'"},
 		SectionStyle: SectionStyle{
 			OpeningPrefix: "<", OpeningSuffix: ">",
@@ -25,6 +25,8 @@ func TestAnalyser(t *testing.T) {
 	fmt.Println(DebugNode(an.rootNode, 0))
 	fmt.Println("Reproduced:")
 	fmt.Println(an.rootNode.TextString())
+	fmt.Println([]byte(input))
+	fmt.Println([]byte(an.rootNode.TextString()))
 	if an.rootNode.TextString() != input {
 		t.Fatal("no match")
 	}
@@ -40,7 +42,7 @@ func TestAnalyser2(t *testing.T) {
 		&AnalyserConfig{
 			StatementContinuationMarkers: []string{"\\"},
 			StatementEndingMarkers:       []string{";"},
-			CommentStyle:                 CommentStyle{Opening: "#"},
+			CommentStyles:                []CommentStyle{CommentStyle{Opening: "#", Closing: "\n"}},
 			TextQuoteStyle:               []string{"\"", "'"},
 			SectionStyle: SectionStyle{
 				OpeningPrefix: "", OpeningSuffix: "{",
@@ -76,7 +78,7 @@ func TestAnalyser3(t *testing.T) {
 		&AnalyserConfig{
 			StatementContinuationMarkers: []string{},
 			StatementEndingMarkers:       []string{"\n"},
-			CommentStyle:                 CommentStyle{Opening: "#"},
+			CommentStyles:                []CommentStyle{CommentStyle{Opening: "#", Closing: "\n"}},
 			TextQuoteStyle:               []string{"\""},
 			SectionStyle: SectionStyle{
 				OpeningPrefix: "[", OpeningSuffix: "]",

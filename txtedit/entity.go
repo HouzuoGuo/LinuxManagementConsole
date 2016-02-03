@@ -31,15 +31,20 @@ func (txt *Text) TextString() string {
 
 // Comment is led by a marker.
 type Comment struct {
-	CommentStyle string
+	CommentStyle CommentStyle
+	Closed       bool // style carries an opening and closing, this flag is true if the comment is properly closed.
 	Content      string
 }
 
 func (comment *Comment) DebugString() string {
-	return fmt.Sprintf("Comment[%s] Content[%s]", comment.CommentStyle, comment.Content)
+	return fmt.Sprintf("Comment[%s] Content[%s]", comment.CommentStyle.Opening, comment.Content)
 }
 func (comment *Comment) TextString() string {
-	return fmt.Sprintf("%s%s", comment.CommentStyle, comment.Content)
+	closing := comment.CommentStyle.Closing
+	if !comment.Closed {
+		closing = ""
+	}
+	return fmt.Sprintf("%s%s%s", comment.CommentStyle.Opening, comment.Content, closing)
 }
 
 // Continuation marker leads to the combination of pieces from both current and the next statement.

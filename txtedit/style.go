@@ -54,7 +54,7 @@ type CommentStyle struct {
 type AnalyserConfig struct {
 	StatementContinuationMarkers []string
 	StatementEndingMarkers       []string
-	CommentStyle                 CommentStyle
+	CommentStyles                []CommentStyle
 	TextQuoteStyle               []string
 
 	SectionStyle SectionStyle

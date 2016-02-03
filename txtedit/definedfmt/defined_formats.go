@@ -5,7 +5,7 @@ import "github.com/HouzuoGuo/LinuxManagementConsole/txtedit"
 var Sysconfig = txtedit.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyle:                 txtedit.CommentStyle{Opening: "#"},
+	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
 	SectionStyle:                 txtedit.SectionStyle{},
 }
@@ -13,7 +13,7 @@ var Sysconfig = txtedit.AnalyserConfig{
 var Sysctl = txtedit.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyle:                 txtedit.CommentStyle{Opening: "#"},
+	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	SectionStyle:                 txtedit.SectionStyle{},
 }
@@ -21,7 +21,7 @@ var Sysctl = txtedit.AnalyserConfig{
 var Systemd = txtedit.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyle:                 txtedit.CommentStyle{Opening: "#"},
+	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
 	SectionStyle: txtedit.SectionStyle{
 		OpeningPrefix: "[", OpeningSuffix: "]",
@@ -33,7 +33,7 @@ var Systemd = txtedit.AnalyserConfig{
 var CronAllowDeny = txtedit.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyle:                 txtedit.CommentStyle{},
+	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{}},
 	TextQuoteStyle:               []string{},
 	SectionStyle:                 txtedit.SectionStyle{},
 }
@@ -41,7 +41,7 @@ var CronAllowDeny = txtedit.AnalyserConfig{
 var Cron = txtedit.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyle:                 txtedit.CommentStyle{Opening: "#"},
+	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	SectionStyle:                 txtedit.SectionStyle{},
 }
@@ -49,7 +49,7 @@ var Cron = txtedit.AnalyserConfig{
 var Hosts = txtedit.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyle:                 txtedit.CommentStyle{Opening: "#"},
+	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	SectionStyle:                 txtedit.SectionStyle{},
 }
@@ -57,7 +57,7 @@ var Hosts = txtedit.AnalyserConfig{
 var LoginDefs = txtedit.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyle:                 txtedit.CommentStyle{Opening: "#"},
+	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	SectionStyle:                 txtedit.SectionStyle{},
 }
@@ -65,7 +65,7 @@ var LoginDefs = txtedit.AnalyserConfig{
 var NsswitchConf = txtedit.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyle:                 txtedit.CommentStyle{Opening: "#"},
+	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	SectionStyle:                 txtedit.SectionStyle{},
 }
@@ -73,7 +73,7 @@ var NsswitchConf = txtedit.AnalyserConfig{
 var Httpd = txtedit.AnalyserConfig{
 	StatementContinuationMarkers: []string{"\\"},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyle:                 txtedit.CommentStyle{Opening: "#"},
+	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\"", "'"},
 	SectionStyle: txtedit.SectionStyle{
 		OpeningPrefix: "<", OpeningSuffix: ">",
@@ -85,7 +85,7 @@ var Httpd = txtedit.AnalyserConfig{
 var Named = txtedit.AnalyserConfig{
 	StatementContinuationMarkers: []string{"\\"},
 	StatementEndingMarkers:       []string{";"},
-	CommentStyle:                 txtedit.CommentStyle{Opening: "#"},
+	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\"", "'"},
 	SectionStyle: txtedit.SectionStyle{
 		OpeningPrefix: "", OpeningSuffix: "{",
@@ -97,7 +97,7 @@ var Named = txtedit.AnalyserConfig{
 var NamedZone = txtedit.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyle:                 txtedit.CommentStyle{Opening: ";"},
+	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: ";", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	SectionStyle: txtedit.SectionStyle{
 		OpeningPrefix: "", OpeningSuffix: "(",
