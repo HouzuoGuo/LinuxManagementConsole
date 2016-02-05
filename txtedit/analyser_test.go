@@ -5,7 +5,9 @@ import (
 	"testing"
 )
 
-var input = `# http://httpd.apache.org/docs/2.4/mod/core.html#options`
+var input = `<a>
+b
+</c>`
 
 func TestAnalyser(t *testing.T) {
 	an := NewAnalyser(input, &AnalyserConfig{
@@ -16,7 +18,7 @@ func TestAnalyser(t *testing.T) {
 		SectionStyle: SectionStyle{
 			OpeningPrefix: "<", OpeningSuffix: ">",
 			ClosingPrefix: "</", ClosingSuffix: ">",
-			BeginSectionWithAStatement: true, EndSectionWithAStatement: true,
+			OpenSectionWithAStatement: true, CloseSectionWithAStatement: true,
 		},
 	},
 		&PrintDebugger{})
@@ -32,9 +34,8 @@ func TestAnalyser(t *testing.T) {
 	}
 }
 
-var input2 = `#a
-b {
-c;
+var input2 = `a {
+b;
 };`
 
 func TestAnalyser2(t *testing.T) {
@@ -42,12 +43,15 @@ func TestAnalyser2(t *testing.T) {
 		&AnalyserConfig{
 			StatementContinuationMarkers: []string{"\\"},
 			StatementEndingMarkers:       []string{";"},
-			CommentStyles:                []CommentStyle{CommentStyle{Opening: "#", Closing: "\n"}},
-			TextQuoteStyle:               []string{"\"", "'"},
+			CommentStyles: []CommentStyle{
+				CommentStyle{Opening: "/*", Closing: "*/"},
+				CommentStyle{Opening: "//", Closing: "\n"},
+				CommentStyle{Opening: "#", Closing: "\n"}},
+			TextQuoteStyle: []string{"\"", "'"},
 			SectionStyle: SectionStyle{
 				OpeningPrefix: "", OpeningSuffix: "{",
 				ClosingPrefix: "", ClosingSuffix: "};",
-				BeginSectionWithAStatement: true, EndSectionWithAStatement: false,
+				OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
 			},
 		},
 		&PrintDebugger{})
@@ -61,17 +65,14 @@ func TestAnalyser2(t *testing.T) {
 	}
 }
 
-var input3 = `## See systemd-system.conf(5) for details.
-# a="a"
-[Manager]
-#LogLevel=info
-#LogTarget=journal-or-kmsg
-[Journald]
-[]
+var input3 = `[a]
+b
+c
+[d]
+e
 
-haha
-
-`
+[f]
+[]`
 
 func TestAnalyser3(t *testing.T) {
 	an := NewAnalyser(input3,
@@ -83,7 +84,7 @@ func TestAnalyser3(t *testing.T) {
 			SectionStyle: SectionStyle{
 				OpeningPrefix: "[", OpeningSuffix: "]",
 				ClosingPrefix: "", ClosingSuffix: "",
-				BeginSectionWithAStatement: true, EndSectionWithAStatement: false,
+				OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
 			},
 		},
 		&PrintDebugger{})

@@ -26,7 +26,7 @@ var Systemd = txtedit.AnalyserConfig{
 	SectionStyle: txtedit.SectionStyle{
 		OpeningPrefix: "[", OpeningSuffix: "]",
 		ClosingPrefix: "", ClosingSuffix: "",
-		BeginSectionWithAStatement: true, EndSectionWithAStatement: false,
+		OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
 	},
 }
 
@@ -78,19 +78,22 @@ var Httpd = txtedit.AnalyserConfig{
 	SectionStyle: txtedit.SectionStyle{
 		OpeningPrefix: "<", OpeningSuffix: ">",
 		ClosingPrefix: "</", ClosingSuffix: ">",
-		BeginSectionWithAStatement: true, EndSectionWithAStatement: true,
+		OpenSectionWithAStatement: true, CloseSectionWithAStatement: true,
 	},
 }
 
 var Named = txtedit.AnalyserConfig{
 	StatementContinuationMarkers: []string{"\\"},
 	StatementEndingMarkers:       []string{";"},
-	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
-	TextQuoteStyle:               []string{"\"", "'"},
+	CommentStyles: []txtedit.CommentStyle{
+		txtedit.CommentStyle{Opening: "/*", Closing: "*/"},
+		txtedit.CommentStyle{Opening: "//", Closing: "\n"},
+		txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
+	TextQuoteStyle: []string{"\"", "'"},
 	SectionStyle: txtedit.SectionStyle{
 		OpeningPrefix: "", OpeningSuffix: "{",
 		ClosingPrefix: "", ClosingSuffix: "};",
-		BeginSectionWithAStatement: true, EndSectionWithAStatement: false,
+		OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
 	},
 }
 
@@ -102,6 +105,6 @@ var NamedZone = txtedit.AnalyserConfig{
 	SectionStyle: txtedit.SectionStyle{
 		OpeningPrefix: "", OpeningSuffix: "(",
 		ClosingPrefix: "", ClosingSuffix: ");",
-		BeginSectionWithAStatement: true, EndSectionWithAStatement: false,
+		OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
 	},
 }

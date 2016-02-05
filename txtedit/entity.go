@@ -87,15 +87,25 @@ func (stmt *Statement) TextString() string {
 }
 
 /*
-Section's beginning and ending are determined by markers. Optionally, the markers surround statements.
+Section's opening and closing are determined by markers. Optionally, the markers surround statements.
 Section is a document node with leaves being its content; if a leaf is another Section, then it is a nested section.
 Original text is recovered from DocumentNode rather than Section, thus Section does not support EntityToText.
 */
 type Section struct {
-	FirstStatement           *Statement
-	BeginPrefix, BeginSuffix string
-	EndPrefix, EndSuffix     string
-	FinalStatement           *Statement
+	FirstStatement               *Statement
+	OpeningPrefix, OpeningSuffix string
+	ClosingPrefix, ClosingSuffix string
+	FinalStatement               *Statement
+
+	/*
+	 The following two flags are used when section's opening is marked by both prefix and suffix,
+	 or its closing is marked by both prefix and suffix.
+	*/
+
+	StatementCounterAtOpening int
+	MissingOpeningStatement   bool
+	StatementCounterAtClosing int
+	MissingClosingStatement   bool
 }
 
 func (sect *Section) DebugString() string {
@@ -107,9 +117,9 @@ func (sect *Section) DebugString() string {
 	if sect.FinalStatement != nil {
 		endStmtStr = sect.FinalStatement.DebugString()
 	}
-	return fmt.Sprintf("Section %s%s%s End %s%s%s",
-		sect.BeginPrefix, beginStmtStr, sect.BeginSuffix,
-		sect.EndPrefix, endStmtStr, sect.EndSuffix)
+	return fmt.Sprintf("Section %s%s%s Closing with %s%s%s",
+		sect.OpeningPrefix, beginStmtStr, sect.OpeningSuffix,
+		sect.ClosingPrefix, endStmtStr, sect.ClosingSuffix)
 }
 
 /*
@@ -140,12 +150,12 @@ func (node *DocumentNode) TextString() string {
 	var out bytes.Buffer
 	section, isSection := node.Obj.(*Section)
 	if isSection {
-		// Write section beginning prefix, first statement, and suffix.
-		out.WriteString(section.BeginPrefix)
+		// Write section opening prefix, first statement, and suffix.
+		out.WriteString(section.OpeningPrefix)
 		if section.FirstStatement != nil {
 			out.WriteString(section.FirstStatement.TextString())
 		}
-		out.WriteString(section.BeginSuffix)
+		out.WriteString(section.OpeningSuffix)
 	} else if node.Obj != nil {
 		out.WriteString(node.Obj.(EntityToText).TextString())
 	}
@@ -153,12 +163,12 @@ func (node *DocumentNode) TextString() string {
 		out.WriteString(leaf.TextString())
 	}
 	if isSection {
-		// Write section ending prefix, final statement, and suffix.
-		out.WriteString(section.EndPrefix)
+		// Write section closing prefix, final statement, and suffix.
+		out.WriteString(section.ClosingPrefix)
 		if section.FinalStatement != nil {
 			out.WriteString(section.FinalStatement.TextString())
 		}
-		out.WriteString(section.EndSuffix)
+		out.WriteString(section.ClosingSuffix)
 	}
 	return out.String()
 }

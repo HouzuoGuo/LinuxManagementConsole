@@ -13,8 +13,8 @@ type SectionMatchMechanism int // Influence how section beginning/ending are det
 type SectionStyle struct {
 	OpeningPrefix, OpeningSuffix string
 	ClosingPrefix, ClosingSuffix string
-	BeginSectionWithAStatement   bool
-	EndSectionWithAStatement     bool
+	OpenSectionWithAStatement    bool
+	CloseSectionWithAStatement   bool
 	AmbiguousSectionSuffix       bool
 	SectionMatchMechanism        SectionMatchMechanism
 }

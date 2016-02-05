@@ -18,6 +18,8 @@ type Analyser struct {
 	contextText            *Text      // reference to the current text entity
 	contextComment         *Comment   // reference to the current comment entity
 	contextStatement       *Statement // reference to the current statement
+
+	statementCounter int // total number of statements that have been ended
 }
 
 // Initialise a new text analyser.
@@ -182,6 +184,7 @@ func (an *Analyser) endStatement(ending string) {
 	an.contextComment = nil
 	an.contextText = nil
 	an.contextStatement = nil
+	an.statementCounter++
 }
 
 /*
@@ -229,15 +232,45 @@ func (an *Analyser) saveSpaces(spaces string) {
 		switch t := lastPiece.(type) {
 		case *Text:
 			t.TrailingSpaces += spaces
-			an.debug.Printf("saveSpaces: %d spaces go into last text piece %p", t)
-		case *Comment:
-			t.Content += spaces
-			an.debug.Printf("saveSpaces: %d spaces go into last comment piece %p", t)
+			an.debug.Printf("saveSpaces: %d spaces go into last text piece %p", length, t)
 		case *StatementContinue:
 			an.createTextIfNil()
 			an.debug.Printf("saveSpaces: %d spaces go into new text piece %p", an.contextText)
 			an.contextText.TrailingSpaces += spaces
 			an.endText()
+		case *Comment:
+			if t.Closed {
+				stmtClosedWithComment := false
+				for _, stmtEndingMarker := range an.config.StatementEndingMarkers {
+					if t.CommentStyle.Closing == stmtEndingMarker {
+						/*
+							In case the comment is closed along with the statement, the spaces should
+							indent the next statement.
+						*/
+						stmtClosedWithComment = true
+						an.endStatement("")
+						an.createStatementIfNil()
+						an.debug.Printf("saveSpaces: %d spaces go into indentation of a new statement %p",
+							length, an.contextStatement)
+						an.contextStatement.Indent += spaces
+						break
+					}
+				}
+				if !stmtClosedWithComment {
+					/*
+						In case the comment is closed but the statement is not, the spaces go into
+						a new text piece, and the text piece only holds the spaces.
+					*/
+					an.createTextIfNil()
+					an.debug.Printf("saveSpaces: %d spaces go into a new text piece %p",
+						length, an.contextText)
+					an.contextText.TrailingSpaces = spaces
+					an.endText()
+				}
+			} else {
+				t.Content += spaces
+				an.debug.Printf("saveSpaces: %d spaces go into last comment piece %p", length, t)
+			}
 		}
 	} else if an.contextStatement != nil {
 		an.debug.Printf("saveSpaces: %d spaces go into indentation of context statement %p",
@@ -289,6 +322,7 @@ func (an *Analyser) continueStatement(marker string) {
 func (an *Analyser) createSection() {
 	an.endStatement("")
 	newSection := new(Section)
+	newSection.StatementCounterAtOpening = an.statementCounter
 	if an.thisNode == an.rootNode {
 		an.debug.Printf("createSection: root node %p has the new section %p", an.thisNode, newSection)
 		an.createLeaf()
@@ -346,7 +380,7 @@ func (an *Analyser) endSection() {
 		an.debug.Printf("endSection: trying to finish section in node %p", an.thisNode)
 		// Calculate the first and final statements
 		minNumLeaves := 0
-		if an.config.SectionStyle.BeginSectionWithAStatement {
+		if an.config.SectionStyle.OpenSectionWithAStatement {
 			/*
 				If prefix styles are empty, the text should look like:
 				sectionA {
@@ -365,7 +399,9 @@ func (an *Analyser) endSection() {
 				an.debug.Printf("endSection: first statement is the previous sibling %p", sect.FirstStatement)
 			} else {
 				sectionFirstLeaf := an.thisNode.Leaves[0]
-				if leafObj := sectionFirstLeaf.Obj; leafObj == nil {
+				if sect.MissingOpeningStatement {
+					an.debug.Printf("endSection: the section is missing its opening statement")
+				} else if leafObj := sectionFirstLeaf.Obj; leafObj == nil {
 					an.debug.Printf("endSection: first statement should be the first leaf %p but it holds nothing",
 						sectionFirstLeaf)
 				} else if stmt, ok := sectionFirstLeaf.Obj.(*Statement); ok {
@@ -380,15 +416,17 @@ func (an *Analyser) endSection() {
 				}
 			}
 		}
-		if an.config.SectionStyle.EndSectionWithAStatement {
+		if an.config.SectionStyle.CloseSectionWithAStatement {
 			/*
-				Rather than two scenarios supported by BeginSectionWithAStatement, there is only one scenario
+				Rather than two scenarios supported by CloseSectionWithAStatement, there is only one scenario
 				to deal with here, the section ending must use both prefixes and suffixes, like this:
 				<sectionA>
 				content
 				</sectionA>     <=== "sectionA" is the ending statement
 			*/
-			if an.config.SectionStyle.ClosingPrefix != "" && an.config.SectionStyle.ClosingSuffix != "" {
+			if sect.MissingClosingStatement {
+				an.debug.Printf("endSection: although the section requires closing statement, there is none.")
+			} else if an.config.SectionStyle.ClosingPrefix != "" && an.config.SectionStyle.ClosingSuffix != "" {
 				// minNumLeaves is 0 if section does not begin with statement that is also the section's leaf
 				// minNumLeaves is 1 if section begins with a statement that is the section's leaf
 				if len(an.thisNode.Leaves) > minNumLeaves {
@@ -444,35 +482,35 @@ func (an *Analyser) getSectionState() (SectionState, *Section) {
 	var state SectionState
 	switch an.config.SectionStyle.SectionMatchMechanism {
 	case SECTION_MATCH_FLAT_SINGLE_ANCHOR:
-		if section.BeginPrefix == "" {
+		if section.OpeningPrefix == "" {
 			state = SECTION_STATE_BEFORE_BEGIN
 		} else {
 			state = SECTION_STATE_END_NOW
 		}
 	case SECTION_MATCH_FLAT_DOUBLE_ANCHOR:
-		if section.BeginPrefix == "" {
+		if section.OpeningPrefix == "" {
 			state = SECTION_STATE_BEFORE_BEGIN
-		} else if section.BeginSuffix == "" {
+		} else if section.OpeningSuffix == "" {
 			state = SECTION_STATE_HAS_BEGIN_PREFIX
 		} else {
 			state = SECTION_STATE_END_NOW
 		}
 	case SECTION_MATCH_NESTED_DOUBLE_ANCHOR:
-		if section.BeginSuffix == "" {
+		if section.OpeningSuffix == "" {
 			state = SECTION_STATE_BEFORE_BEGIN
-		} else if section.EndSuffix == "" {
+		} else if section.ClosingSuffix == "" {
 			state = SECTION_STATE_HAS_END_PREFIX
 		} else {
 			state = SECTION_STATE_END_NOW
 		}
 	case SECTION_MATCH_NESTED_QUAD_ANCHOR:
-		if section.BeginPrefix == "" {
+		if section.OpeningPrefix == "" {
 			state = SECTION_STATE_BEFORE_BEGIN
-		} else if section.BeginSuffix == "" {
+		} else if section.OpeningSuffix == "" {
 			state = SECTION_STATE_HAS_BEGIN_PREFIX
-		} else if section.EndPrefix == "" {
+		} else if section.ClosingPrefix == "" {
 			state = SECTION_STATE_HAS_BEGIN_SUFFIX
-		} else if section.EndSuffix == "" {
+		} else if section.ClosingSuffix == "" {
 			state = SECTION_STATE_HAS_END_PREFIX
 		} else {
 			state = SECTION_STATE_END_NOW
@@ -484,8 +522,8 @@ func (an *Analyser) getSectionState() (SectionState, *Section) {
 	return state, section
 }
 
-// Save the section beginning's prefix marking, create a new section if there is not one.
-func (an *Analyser) setSectionBeginPrefix(prefix string) {
+// Save the section opening's prefix marking, create a new section if there is not one.
+func (an *Analyser) setSectionOpeningPrefix(prefix string) {
 	if an.saveQuoteOrCommentCharacters(prefix) {
 		return
 	}
@@ -493,91 +531,109 @@ func (an *Analyser) setSectionBeginPrefix(prefix string) {
 	state, sect := an.getSectionState()
 	if state == SECTION_STATE_BEFORE_BEGIN {
 		// Create a new section while not being in a section
-		an.debug.Printf("setSectionBeginPrefix: create a new section from node %p", an.thisNode)
+		an.debug.Printf("setSectionOpeningPrefix: create a new section from node %p", an.thisNode)
 		an.createSection()
-		an.thisNode.Parent.Obj.(*Section).BeginPrefix = prefix
+		an.thisNode.Parent.Obj.(*Section).OpeningPrefix = prefix
 	} else if an.config.SectionStyle.SectionMatchMechanism == SECTION_MATCH_FLAT_DOUBLE_ANCHOR ||
 		an.config.SectionStyle.SectionMatchMechanism == SECTION_MATCH_FLAT_DOUBLE_ANCHOR {
 		// Already in a section but document does not allow nested section
-		an.debug.Printf("setSectionBeginPrefix: end section of node %p and create a new section", an.thisNode.Parent)
+		an.debug.Printf("setSectionOpeningPrefix: end section of node %p and create a new section", an.thisNode.Parent)
 		an.endSection()
 		an.createSection()
-		an.thisNode.Parent.Obj.(*Section).BeginPrefix = prefix
+		an.thisNode.Parent.Obj.(*Section).OpeningPrefix = prefix
 	} else if state == SECTION_STATE_END_NOW {
 		// Marker matches but section should end now
-		an.debug.Printf("setSectionBeginPrefix: end section right now")
-		sect.BeginPrefix = prefix
+		an.debug.Printf("setSectionOpeningPrefix: end section right now")
+		sect.OpeningPrefix = prefix
 		an.endSection()
 	} else {
 		// Create a nested section
-		an.debug.Printf("setSectionBeginPrefix: create a nested section from node %p", an.thisNode)
+		an.debug.Printf("setSectionOpeningPrefix: create a nested section from node %p", an.thisNode)
 		an.createSection()
-		an.thisNode.Parent.Obj.(*Section).BeginPrefix = prefix
+		an.thisNode.Parent.Obj.(*Section).OpeningPrefix = prefix
 	}
 }
 
-// Save the section beginning's suffix marking.
-func (an *Analyser) setSectionBeginSuffix(suffix string) {
+// Save the section opening's suffix marking.
+func (an *Analyser) setSectionOpeningSuffix(suffix string) {
 	if an.saveQuoteOrCommentCharacters(suffix) {
 		return
 	}
 	an.endStatement("")
 	if state, sect := an.getSectionState(); state == SECTION_STATE_END_NOW {
 		// Marker matches but section should end now
-		an.debug.Printf("setSectionBeginSuffix: end section right now")
-		sect.BeginSuffix = suffix
+		sect.OpeningSuffix = suffix
+		// If statement counter has not increased, then the opening statement does not exist.
+		if sect.StatementCounterAtOpening == an.statementCounter {
+			sect.MissingOpeningStatement = true
+		}
+		an.debug.Printf("setSectionOpeningSuffix: end section right now (missing opening stmt? %v)", sect.MissingOpeningStatement)
 		an.endSection()
 	} else if an.config.SectionStyle.SectionMatchMechanism == SECTION_MATCH_NESTED_DOUBLE_ANCHOR {
 		// Create a section or nested section
-		an.debug.Printf("setSectionBeginSuffix: create a new section/nested section from node %p", an.thisNode)
+		an.debug.Printf("setSectionOpeningSuffix: create a new section/nested section from node %p", an.thisNode)
 		an.createSection()
-		an.thisNode.Parent.Obj.(*Section).BeginSuffix = suffix
+		an.thisNode.Parent.Obj.(*Section).OpeningSuffix = suffix
 	} else if state < SECTION_STATE_HAS_BEGIN_PREFIX || state > SECTION_STATE_HAS_BEGIN_SUFFIX {
 		// State is not right so the marker must have been text
-		an.debug.Printf("setSectionBeginSuffix: state is not right so only store the characters")
+		an.debug.Printf("setSectionOpeningSuffix: state is not right so only store the characters")
 		an.saveMissedCharacters()
 	} else {
 		// Set suffix if state is right
-		an.debug.Printf("setSectionBeginSuffix: set suffix")
-		sect.BeginSuffix = suffix
+		sect.OpeningSuffix = suffix
+		// If statement counter has not increased, then the opening statement does not exist.
+		if sect.StatementCounterAtOpening == an.statementCounter {
+			sect.MissingOpeningStatement = true
+		}
+		an.debug.Printf("setSectionOpeningSuffix: set suffix (missing opening stmt? %v)", sect.MissingOpeningStatement)
 	}
 }
 
-// Save the section beginning's prefix marking.
-func (an *Analyser) setSectionEndPrefix(prefix string) {
+// Save the section opening's prefix marking.
+func (an *Analyser) setSectionClosingPrefix(prefix string) {
 	if an.saveQuoteOrCommentCharacters(prefix) {
 		return
 	}
 	an.endStatement("")
 	if state, sect := an.getSectionState(); state == SECTION_STATE_END_NOW {
-		an.debug.Printf("setSectionEndPrefix: end section right now")
-		sect.EndPrefix = prefix
+		an.debug.Printf("setSectionClosingPrefix: end section right now")
+		sect.ClosingPrefix = prefix
+		sect.StatementCounterAtClosing = an.statementCounter
 		an.endSection()
 	} else if state < SECTION_STATE_HAS_BEGIN_SUFFIX || state > SECTION_STATE_HAS_END_PREFIX {
-		an.debug.Printf("setSectionEndPrefix: state is not right so only store the characters")
+		an.debug.Printf("setSectionClosingPrefix: state is not right so only store the characters")
 		an.saveMissedCharacters()
 	} else {
-		an.debug.Printf("setSectionEndPrefix: set prefix")
-		sect.EndPrefix = prefix
+		an.debug.Printf("setSectionClosingPrefix: set prefix")
+		sect.ClosingPrefix = prefix
+		sect.StatementCounterAtClosing = an.statementCounter
 	}
 }
 
 // Save the section ending's suffix marking.
-func (an *Analyser) setSectionEndSuffix(suffix string) {
+func (an *Analyser) setSectionClosingSuffix(suffix string) {
 	if an.saveQuoteOrCommentCharacters(suffix) {
 		return
 	}
 	an.endStatement("")
 	if state, sect := an.getSectionState(); state >= SECTION_STATE_HAS_END_PREFIX {
-		an.debug.Printf("setSectionEndSuffix: end section right now")
-		sect.EndSuffix = suffix
+		an.debug.Printf("setSectionClosingSuffix: end section right now")
+		sect.ClosingSuffix = suffix
+		// If statement counter has not increased, then the opening statement does not exist.
+		if sect.StatementCounterAtClosing == an.statementCounter {
+			sect.MissingClosingStatement = true
+		}
 		an.endSection()
 	} else if state < SECTION_STATE_HAS_END_PREFIX && an.config.SectionStyle.AmbiguousSectionSuffix {
-		an.debug.Printf("setSectionEndSuffix: call setSectionSetBeginSuffix due to ambiguous suffix choice")
-		an.setSectionBeginSuffix(suffix)
+		an.debug.Printf("setSectionClosingSuffix: call setSectionSetBeginSuffix due to ambiguous suffix choice")
+		an.setSectionOpeningSuffix(suffix)
 	} else {
-		an.debug.Printf("EndSectionSetSuffix: set suffix")
-		sect.EndSuffix = suffix
+		an.debug.Printf("setSectionClosingSuffix: set suffix")
+		sect.ClosingSuffix = suffix
+		// If statement counter has not increased, then the opening statement does not exist.
+		if sect.StatementCounterAtClosing == an.statementCounter {
+			sect.MissingClosingStatement = true
+		}
 	}
 }
 
@@ -735,19 +791,19 @@ func (an *Analyser) Run() *DocumentNode {
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookFor(an.config.SectionStyle.ClosingSuffix); advance > 0 {
 			an.debug.Printf("Section closing suffix: %s", match)
-			an.setSectionEndSuffix(match)
+			an.setSectionClosingSuffix(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookFor(an.config.SectionStyle.ClosingPrefix); advance > 0 {
 			an.debug.Printf("Section closing prefix: %s", match)
-			an.setSectionEndPrefix(match)
+			an.setSectionClosingPrefix(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookFor(an.config.SectionStyle.OpeningSuffix); advance > 0 {
 			an.debug.Printf("Section opening suffix: %s", match)
-			an.setSectionBeginSuffix(match)
+			an.setSectionOpeningSuffix(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookFor(an.config.SectionStyle.OpeningPrefix); advance > 0 {
 			an.debug.Printf("Section opening prefix: %s", match)
-			an.setSectionBeginPrefix(match)
+			an.setSectionOpeningPrefix(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else {
 			advance = 1
