@@ -101,7 +101,7 @@ func (an *Analyser) createCommentIfNil(commentStyle CommentStyle) {
 }
 
 // If comment context is not nil, move the comment into statement context and clear comment context.
-func (an *Analyser) endComment(closed bool) {
+func (an *Analyser) endComment(marker string, closed bool) {
 	if an.contextComment == nil {
 		return
 	}
@@ -110,7 +110,23 @@ func (an *Analyser) endComment(closed bool) {
 	an.createStatementIfNil()
 	an.contextStatement.Pieces = append(an.contextStatement.Pieces, an.contextComment)
 	an.debug.Printf("endComment: comment %p is now a piece of statement %p", an.contextComment, an.contextStatement)
+
+	oldComment := an.contextComment
 	an.contextComment = nil
+	// Test if comment is also ending the statement
+	if marker != "" {
+		for _, stmtEndingMarker := range an.config.StatementEndingMarkers {
+			if marker == stmtEndingMarker {
+				/*
+					The "closed" flag must be unset on the comment, otherwise when reproducing the original text,
+					the ending marker will be reproduced twice - once by the comment, and once more by the statement.
+				*/
+				oldComment.Closed = false
+				an.endStatement(marker)
+				break
+			}
+		}
+	}
 }
 
 // If text context is nil, assign the context a new text entity.
@@ -153,7 +169,7 @@ func (an *Analyser) endStatement(ending string) {
 	}
 	// Organise context objects
 	an.saveMissedCharacters()
-	an.endComment(false)
+	an.endComment("", false)
 	an.endText()
 	if an.ignoreNewStatementOnce {
 		an.debug.Printf("endStatement: not creating new document node when ignoreNewStatementOnce is set")
@@ -165,9 +181,10 @@ func (an *Analyser) endStatement(ending string) {
 		if ending != "" {
 			an.debug.Printf("endStatement: save statement ending in a new statement")
 			// The following branch is a workaround for input text "[]\n", assuming [] denotes a section.
-			if state, _ := an.getSectionState(); state == SECTION_STATE_END_NOW {
-				an.endSection()
-			}
+			//			if state, _ := an.getSectionState(); state == SECTION_STATE_END_NOW {
+			//				an.endSection()
+			//			}
+			// ^^^^^^^^^^ Why did I write that? ^^^^^^^^^^
 			an.createDocumentSiblingNode(&Statement{Ending: ending})
 		}
 		return
@@ -310,7 +327,7 @@ func (an *Analyser) continueStatement(marker string) {
 		return
 	}
 	an.saveMissedCharacters()
-	an.endComment(false)
+	an.endComment("", false)
 	an.endText()
 	an.createStatementIfNil()
 	an.contextStatement.Pieces = append(an.contextStatement.Pieces, &StatementContinue{Style: marker})
@@ -749,7 +766,7 @@ func (an *Analyser) isClosingComment() int {
 		if match, advance := an.lookFor(style.Closing); advance > 0 {
 			if match == an.contextComment.CommentStyle.Closing {
 				an.debug.Printf("Comment closing: %s", match)
-				an.endComment(true)
+				an.endComment(match, true)
 				return advance
 			}
 		}

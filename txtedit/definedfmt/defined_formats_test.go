@@ -48,7 +48,7 @@ func TestTextBreakdown(t *testing.T) {
 		}
 		txtInputStr := string(txtInput)
 
-		analyser := txtedit.NewAnalyser(txtInputStr, &sample.config, &txtedit.PrintDebugger{})
+		analyser := txtedit.NewAnalyser(txtInputStr, &sample.config, &txtedit.NoopDebugger{})
 		fmt.Println("@@@@@@@@@@@@@@Going to analyse", sample.fileName)
 		rootNode := analyser.Run()
 		reproducedText := rootNode.TextString()
