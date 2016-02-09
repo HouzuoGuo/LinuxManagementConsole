@@ -7,7 +7,10 @@ import (
 
 var input = `<a>
 b
-</c>`
+<c>
+d
+</c>
+</a>`
 
 func TestAnalyser(t *testing.T) {
 	an := NewAnalyser(input, &AnalyserConfig{
@@ -34,8 +37,8 @@ func TestAnalyser(t *testing.T) {
 	}
 }
 
-var input2 = `a {
-b;
+var input2 = `a{
+#b{c;};
 };`
 
 func TestAnalyser2(t *testing.T) {

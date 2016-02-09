@@ -161,6 +161,13 @@ func (an *Analyser) createStatementIfNil() {
 // Move context text and comment into context statement (create new statement if necessary), and clear context statement.
 func (an *Analyser) endStatement(ending string) {
 	an.debug.Printf("endStatement: trying to end with %v", []byte(ending))
+	if an.contextComment != nil && !an.contextComment.Closed && an.contextComment.CommentStyle.Closing != ending {
+		// If there is still a comment and the ending marker does not close the comment, save the ending marker.
+		an.saveMissedCharacters()
+		an.debug.Printf("endStatement: the statement ending goes into open context comment %p", an.contextComment)
+		an.contextComment.Content += ending
+		return
+	}
 	if an.contextText != nil && an.contextText.QuoteStyle != "" {
 		an.saveMissedCharacters()
 		an.debug.Printf("endStatement: the statement ending goes into context text %p", an.contextText)
