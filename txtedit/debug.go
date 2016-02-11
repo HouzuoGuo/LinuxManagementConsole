@@ -32,7 +32,7 @@ func DebugNode(node *DocumentNode, indent int) string {
 }
 
 // Offer debugging capabilities to an Analyser.
-type AnalyzerDebugger interface {
+type AnalyserDebugger interface {
 	Printf(format string, msg ...interface{})
 }
 

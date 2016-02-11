@@ -7,7 +7,7 @@ pieces that are easier for further analysis and reproduction of document text.
 type Analyser struct {
 	textInput string           // the original input text
 	config    *AnalyserConfig  // document style specification and more configuration
-	debug     AnalyzerDebugger // output from analyser's progress, and output of debug information
+	debug     AnalyserDebugger // output from analyser's progress, and output of debug information
 
 	previousMarkerPosition int           // the character index where previous marker was encountered
 	herePosition           int           // index of the current character where analyser has progressed
@@ -23,7 +23,7 @@ type Analyser struct {
 }
 
 // Initialise a new text analyser.
-func NewAnalyser(textInput string, config *AnalyserConfig, debugger AnalyzerDebugger) (ret *Analyser) {
+func NewAnalyser(textInput string, config *AnalyserConfig, debugger AnalyserDebugger) (ret *Analyser) {
 	ret = &Analyser{textInput: textInput, config: config, debug: debugger}
 	ret.thisNode = &DocumentNode{Parent: nil, Obj: nil, Leaves: make([]*DocumentNode, 0, 8)}
 	ret.rootNode = ret.thisNode
@@ -95,7 +95,6 @@ func (an *Analyser) createCommentIfNil(commentStyle CommentStyle) {
 		an.debug.Printf("createCommentIfNil: context comment is assigned to %p", an.contextComment)
 	} else {
 		an.debug.Printf("createCommentIfNil: comment style goes into %p", an.contextComment)
-		an.saveMissedCharacters()
 		//		an.contextComment.Content += commentStyle
 	}
 }
@@ -161,8 +160,11 @@ func (an *Analyser) createStatementIfNil() {
 // Move context text and comment into context statement (create new statement if necessary), and clear context statement.
 func (an *Analyser) endStatement(ending string) {
 	an.debug.Printf("endStatement: trying to end with %v", []byte(ending))
-	if an.contextComment != nil && !an.contextComment.Closed && an.contextComment.CommentStyle.Closing != ending {
-		// If there is still a comment and the ending marker does not close the comment, save the ending marker.
+	if an.contextComment != nil && // if there is still a comment ...
+		!an.contextComment.Closed && // that has not been closed ...
+		an.contextComment.CommentStyle.Closing != ending && // and the statement ending does not close the comment
+		ending != "" { // and this is not "ending statement no matter what" situation
+		// If there is still a comment and the ending marker does not close the comment, only save the ending marker in the comment.
 		an.saveMissedCharacters()
 		an.debug.Printf("endStatement: the statement ending goes into open context comment %p", an.contextComment)
 		an.contextComment.Content += ending
@@ -756,6 +758,8 @@ func (an *Analyser) isOpeningComment() int {
 	for _, style := range an.config.CommentStyles {
 		if match, advance := an.lookFor(style.Opening); advance > 0 {
 			an.debug.Printf("Comment opening: %s", match)
+			an.saveMissedCharacters()
+			an.endText()
 			an.createCommentIfNil(style)
 			return advance
 		}

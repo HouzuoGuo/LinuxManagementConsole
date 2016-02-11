@@ -53,11 +53,27 @@ func TestTextBreakdown(t *testing.T) {
 		rootNode := analyser.Run()
 		reproducedText := rootNode.TextString()
 		fmt.Println(txtedit.DebugNode(rootNode, 0))
-		for i, ch := range txtInputStr {
-			if ch != rune(reproducedText[i]) {
-				t.Fatalf("Mismatch in file %s, at position %d\n====should read====\n%s\n====reproduced====\n%s\n",
-					sample.fileName, i, GetTextAround(txtInputStr, i, 32), GetTextAround(reproducedText, i, 32))
+		lenOriginal := len(txtInputStr)
+		lenReproduced := len(reproducedText)
+		if lenReproduced >= lenOriginal {
+			for i, ch := range txtInputStr {
+				if ch != rune(reproducedText[i]) {
+					t.Fatalf("Mismatch in file %s, at position %d\n====should read====\n%s\n====reproduced====\n%s\n",
+						sample.fileName, i, GetTextAround(txtInputStr, i, 32), GetTextAround(reproducedText, i, 32))
+				}
 			}
+		} else {
+			for i, ch := range reproducedText {
+				if ch != rune(txtInput[i]) {
+					t.Fatalf("Mismatch in file %s, at position %d\n====should read====\n%s\n====reproduced====\n%s\n",
+						sample.fileName, i, GetTextAround(txtInputStr, i, 32), GetTextAround(reproducedText, i, 32))
+				}
+			}
+		}
+		if lenReproduced > lenOriginal {
+			t.Fatalf("Reproduced text is longer, extra is:\n%s", reproducedText[lenOriginal+1:])
+		} else if lenReproduced < lenOriginal {
+			t.Fatalf("Original text is longer, extra is:\n%s", txtInputStr[lenReproduced+1:])
 		}
 	}
 }

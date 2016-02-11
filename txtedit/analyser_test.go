@@ -38,8 +38,9 @@ func TestAnalyser(t *testing.T) {
 }
 
 var input2 = `a{
-#b{c;};
-};`
+#b
+};
+#abc`
 
 func TestAnalyser2(t *testing.T) {
 	an := NewAnalyser(input2,
