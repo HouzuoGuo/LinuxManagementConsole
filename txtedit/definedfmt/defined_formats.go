@@ -54,7 +54,7 @@ var Hosts = txtedit.AnalyserConfig{
 	SectionStyle:                 txtedit.SectionStyle{},
 }
 
-var LoginDefs = txtedit.AnalyserConfig{
+var Login = txtedit.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
 	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
@@ -62,7 +62,7 @@ var LoginDefs = txtedit.AnalyserConfig{
 	SectionStyle:                 txtedit.SectionStyle{},
 }
 
-var NsswitchConf = txtedit.AnalyserConfig{
+var Nsswitch = txtedit.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
 	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
@@ -84,7 +84,7 @@ var Httpd = txtedit.AnalyserConfig{
 
 var Named = txtedit.AnalyserConfig{
 	StatementContinuationMarkers: []string{"\\"},
-	StatementEndingMarkers:       []string{";"},
+	StatementEndingMarkers:       []string{";\n", ";"},
 	CommentStyles: []txtedit.CommentStyle{
 		txtedit.CommentStyle{Opening: "/*", Closing: "*/"},
 		txtedit.CommentStyle{Opening: "//", Closing: "\n"},
@@ -105,6 +105,18 @@ var NamedZone = txtedit.AnalyserConfig{
 	SectionStyle: txtedit.SectionStyle{
 		OpeningPrefix: "", OpeningSuffix: "(",
 		ClosingPrefix: "", ClosingSuffix: ");",
+		OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
+	},
+}
+
+var Dhcpd = txtedit.AnalyserConfig{
+	StatementContinuationMarkers: []string{},
+	StatementEndingMarkers:       []string{";\n", ";"},
+	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
+	TextQuoteStyle:               []string{"\""},
+	SectionStyle: txtedit.SectionStyle{
+		OpeningPrefix: "", OpeningSuffix: "{",
+		ClosingPrefix: "", ClosingSuffix: "}",
 		OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
 	},
 }

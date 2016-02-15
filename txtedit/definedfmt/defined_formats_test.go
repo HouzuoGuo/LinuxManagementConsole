@@ -21,11 +21,12 @@ var samples = []struct {
 	{CronAllowDeny, "cron-allow-deny"},
 	{Cron, "cron"},
 	{Hosts, "hosts"},
-	{LoginDefs, "login.defs"},
-	{NsswitchConf, "nsswitch.conf"},
+	{Login, "login"},
+	{Nsswitch, "nsswitch"},
 	{Httpd, "httpd"},
 	{NamedZone, "named-zone"},
 	{Named, "named"},
+	{Dhcpd, "dhcpd"},
 }
 
 func GetTextAround(str string, pos, length int) (ret string) {
