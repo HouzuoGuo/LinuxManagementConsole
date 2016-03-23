@@ -1,4 +1,4 @@
-package txtedit
+package analyser
 
 import (
 	"bytes"
@@ -41,6 +41,7 @@ type NoopDebugger struct {
 }
 
 func (debug *NoopDebugger) Printf(format string, msg ...interface{}) {
+	// Intentionally left blank
 }
 
 // An AnalyzerDebugger implementation that prints messages to standard output.

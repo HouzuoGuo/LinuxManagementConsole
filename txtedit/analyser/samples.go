@@ -1,4 +1,4 @@
-package txtedit
+package analyser
 
 var EVERYTHING_CONF string = `
 # ====== ntpd ======

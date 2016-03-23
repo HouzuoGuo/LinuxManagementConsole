@@ -1,4 +1,4 @@
-package txtedit
+package analyser
 
 const (
 	SECTION_MATCH_FLAT_SINGLE_ANCHOR   = 11 // For example ==Foobar

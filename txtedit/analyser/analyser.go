@@ -1,4 +1,4 @@
-package txtedit
+package analyser
 
 /*
 Text analyser analyses input text character by character, breaks down the whole document into smaller

@@ -2,17 +2,17 @@ package definedfmt
 
 import (
 	"fmt"
-	"github.com/HouzuoGuo/LinuxManagementConsole/txtedit"
+	"github.com/HouzuoGuo/LinuxManagementConsole/txtedit/analyser"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
 )
 
-var sampleTextLocation = os.Getenv("GOPATH") + "/src/github.com/HouzuoGuo/LinuxManagementConsole/txtedit/samples/"
+var sampleTextLocation = os.Getenv("GOPATH") + "/src/github.com/HouzuoGuo/LinuxManagementConsole/txtedit/definedfmt/samples/"
 
 var samples = []struct {
-	config   txtedit.AnalyserConfig
+	config   analyser.AnalyserConfig
 	fileName string
 }{
 	{Sysconfig, "sysconfig"},
@@ -49,11 +49,11 @@ func TestTextBreakdown(t *testing.T) {
 		}
 		txtInputStr := string(txtInput)
 
-		analyser := txtedit.NewAnalyser(txtInputStr, &sample.config, &txtedit.NoopDebugger{})
+		an := analyser.NewAnalyser(txtInputStr, &sample.config, &analyser.NoopDebugger{})
 		fmt.Println("@@@@@@@@@@@@@@Going to analyse", sample.fileName)
-		rootNode := analyser.Run()
+		rootNode := an.Run()
 		reproducedText := rootNode.TextString()
-		fmt.Println(txtedit.DebugNode(rootNode, 0))
+		fmt.Println(analyser.DebugNode(rootNode, 0))
 		lenOriginal := len(txtInputStr)
 		lenReproduced := len(reproducedText)
 		if lenReproduced >= lenOriginal {

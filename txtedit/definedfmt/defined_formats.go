@@ -1,120 +1,120 @@
 package definedfmt
 
-import "github.com/HouzuoGuo/LinuxManagementConsole/txtedit"
+import "github.com/HouzuoGuo/LinuxManagementConsole/txtedit/analyser"
 
-var Sysconfig = txtedit.AnalyserConfig{
+var Sysconfig = analyser.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
-	SectionStyle:                 txtedit.SectionStyle{},
+	SectionStyle:                 analyser.SectionStyle{},
 }
 
-var Sysctl = txtedit.AnalyserConfig{
+var Sysctl = analyser.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
-	SectionStyle:                 txtedit.SectionStyle{},
+	SectionStyle:                 analyser.SectionStyle{},
 }
 
-var Systemd = txtedit.AnalyserConfig{
+var Systemd = analyser.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
-	SectionStyle: txtedit.SectionStyle{
+	SectionStyle: analyser.SectionStyle{
 		OpeningPrefix: "[", OpeningSuffix: "]",
 		ClosingPrefix: "", ClosingSuffix: "",
 		OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
 	},
 }
 
-var CronAllowDeny = txtedit.AnalyserConfig{
+var CronAllowDeny = analyser.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{}},
+	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{}},
 	TextQuoteStyle:               []string{},
-	SectionStyle:                 txtedit.SectionStyle{},
+	SectionStyle:                 analyser.SectionStyle{},
 }
 
-var Cron = txtedit.AnalyserConfig{
+var Cron = analyser.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
-	SectionStyle:                 txtedit.SectionStyle{},
+	SectionStyle:                 analyser.SectionStyle{},
 }
 
-var Hosts = txtedit.AnalyserConfig{
+var Hosts = analyser.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
-	SectionStyle:                 txtedit.SectionStyle{},
+	SectionStyle:                 analyser.SectionStyle{},
 }
 
-var Login = txtedit.AnalyserConfig{
+var Login = analyser.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
-	SectionStyle:                 txtedit.SectionStyle{},
+	SectionStyle:                 analyser.SectionStyle{},
 }
 
-var Nsswitch = txtedit.AnalyserConfig{
+var Nsswitch = analyser.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
-	SectionStyle:                 txtedit.SectionStyle{},
+	SectionStyle:                 analyser.SectionStyle{},
 }
 
-var Httpd = txtedit.AnalyserConfig{
+var Httpd = analyser.AnalyserConfig{
 	StatementContinuationMarkers: []string{"\\"},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\"", "'"},
-	SectionStyle: txtedit.SectionStyle{
+	SectionStyle: analyser.SectionStyle{
 		OpeningPrefix: "<", OpeningSuffix: ">",
 		ClosingPrefix: "</", ClosingSuffix: ">",
 		OpenSectionWithAStatement: true, CloseSectionWithAStatement: true,
 	},
 }
 
-var Named = txtedit.AnalyserConfig{
+var Named = analyser.AnalyserConfig{
 	StatementContinuationMarkers: []string{"\\"},
 	StatementEndingMarkers:       []string{";\n", ";"},
-	CommentStyles: []txtedit.CommentStyle{
-		txtedit.CommentStyle{Opening: "/*", Closing: "*/"},
-		txtedit.CommentStyle{Opening: "//", Closing: "\n"},
-		txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles: []analyser.CommentStyle{
+		analyser.CommentStyle{Opening: "/*", Closing: "*/"},
+		analyser.CommentStyle{Opening: "//", Closing: "\n"},
+		analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle: []string{"\"", "'"},
-	SectionStyle: txtedit.SectionStyle{
+	SectionStyle: analyser.SectionStyle{
 		OpeningPrefix: "", OpeningSuffix: "{",
 		ClosingPrefix: "", ClosingSuffix: "};",
 		OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
 	},
 }
 
-var NamedZone = txtedit.AnalyserConfig{
+var NamedZone = analyser.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: ";", Closing: "\n"}},
+	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: ";", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
-	SectionStyle: txtedit.SectionStyle{
+	SectionStyle: analyser.SectionStyle{
 		OpeningPrefix: "", OpeningSuffix: "(",
 		ClosingPrefix: "", ClosingSuffix: ");",
 		OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
 	},
 }
 
-var Dhcpd = txtedit.AnalyserConfig{
+var Dhcpd = analyser.AnalyserConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{";\n", ";"},
-	CommentStyles:                []txtedit.CommentStyle{txtedit.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
-	SectionStyle: txtedit.SectionStyle{
+	SectionStyle: analyser.SectionStyle{
 		OpeningPrefix: "", OpeningSuffix: "{",
 		ClosingPrefix: "", ClosingSuffix: "}",
 		OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,

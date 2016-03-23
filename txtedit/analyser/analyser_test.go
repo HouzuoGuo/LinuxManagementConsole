@@ -1,4 +1,4 @@
-package txtedit
+package analyser
 
 import (
 	"fmt"
