@@ -177,11 +177,11 @@ func (node *DocumentNode) TextString() string {
 If this node has leaves and the leaf is among them, return the index of the leaf.
 Otherwise, return -1.
 */
-func (base *DocumentNode) FindLeafIndex(leaf *DocumentNode) int {
-	if base.Leaves == nil || len(base.Leaves) == 0 {
+func (node *DocumentNode) FindLeafIndex(leaf *DocumentNode) int {
+	if node.Leaves == nil || len(node.Leaves) == 0 {
 		return -1
 	}
-	for i, aLeaf := range base.Leaves {
+	for i, aLeaf := range node.Leaves {
 		if aLeaf == leaf {
 			return i
 		}
@@ -189,32 +189,87 @@ func (base *DocumentNode) FindLeafIndex(leaf *DocumentNode) int {
 	return -1
 }
 
+// Remove reference to this node from the parent's leaves. Return true only if the node has been deleted.
+func (node *DocumentNode) DeleteSelf() bool {
+	if node.Parent == nil {
+		return false
+	}
+	i := node.Parent.FindLeafIndex(node)
+	if i == -1 {
+		return false
+	}
+	leaves := node.Parent.Leaves
+	node.Parent.Leaves = append(leaves[:i], leaves[i+1:]...)
+	return true
+}
+
+// Place the new node before this node in the parent's leaves. Return true only if the new node has been placed.
+func (node *DocumentNode) InsertBeforeSelf(newNode *DocumentNode) bool {
+	if node.Parent == nil {
+		return false
+	}
+	i := node.Parent.FindLeafIndex(node)
+	if i == -1 {
+		return false // this node is not found among parent's leaves
+	}
+	// newLeaves = [leaves before i], newNode, [leaves at and after i]
+	newLeaves := make([]*DocumentNode, len(node.Parent.Leaves)+1)
+	copy(newLeaves, node.Parent.Leaves[:i])
+	newLeaves[i] = newNode
+	copy(newLeaves[i+1:], node.Parent.Leaves[i:])
+	node.Parent.Leaves = newLeaves
+	newNode.Parent = node.Parent
+	return true
+
+}
+
+// Place the new node after this node in the parent's leaves. Return true only if the new node has been placed.
+func (node *DocumentNode) InsertAfterSelf(newNode *DocumentNode) bool {
+	if node.Parent == nil {
+		return false
+	}
+	i := node.Parent.FindLeafIndex(node)
+	if i == -1 {
+		return false // this node is not found among parent's leaves
+	}
+	newLeaves := make([]*DocumentNode, len(node.Parent.Leaves)+1)
+	// newLeaves = [leaves before and at i], newNode, [leaves after i]
+	copy(newLeaves, node.Parent.Leaves[:i+1])
+	newLeaves[i+1] = newNode
+	copy(newLeaves[i+2:], node.Parent.Leaves[i:+1])
+	node.Parent.Leaves = newLeaves
+	newNode.Parent = node.Parent
+	return true
+}
+
 /*
 If this node has leaves and the leaf node is among them, insert the new node right before the leaf node.
 If this node does not have leaves and leaf node is nil, the new node will be made the first leave of this node.
 Return true only if the new node has been placed.
 */
-func (base *DocumentNode) InsertBefore(leaf *DocumentNode, newNode *DocumentNode) bool {
-	if base.Leaves == nil || len(base.Leaves) == 0 {
+func (node *DocumentNode) InsertBefore(leaf *DocumentNode, newNode *DocumentNode) bool {
+	if node.Leaves == nil || len(node.Leaves) == 0 {
 		if leaf == nil {
 			// New node is the first leaf
-			base.Leaves = make([]*DocumentNode, 0, 8)
-			base.Leaves = append(base.Leaves, newNode)
+			node.Leaves = make([]*DocumentNode, 0, 0)
+			node.Leaves = append(node.Leaves, newNode)
+			newNode.Parent = node
 			return true
 		}
 		return false
 	}
 	// Insert new node among leaves
-	i := base.FindLeafIndex(leaf)
+	i := node.FindLeafIndex(leaf)
 	if i == -1 {
 		return false // leaf is not found
 	}
-	newLeaves := make([]*DocumentNode, len(base.Leaves)+1)
 	// newLeaves = [leaves before i], newNode, [leaves at and after i]
-	copy(newLeaves, base.Leaves[0:i])
+	newLeaves := make([]*DocumentNode, len(node.Leaves)+1)
+	copy(newLeaves, node.Leaves[:i])
 	newLeaves[i] = newNode
-	copy(newLeaves[i+1:], base.Leaves[i:])
-	base.Leaves = newLeaves
+	copy(newLeaves[i+1:], node.Leaves[i:])
+	node.Leaves = newLeaves
+	newNode.Parent = node
 	return true
 }
 
@@ -223,26 +278,28 @@ If this node has leaves and the leaf node is among them, insert the new node rig
 If this node does not have leaves and leaf node is nil, the new node will be made the first leave of this node.
 Return true only if the new node has been placed.
 */
-func (base *DocumentNode) InsertAfter(leaf *DocumentNode, newNode *DocumentNode) bool {
-	if base.Leaves == nil || len(base.Leaves) == 0 {
+func (node *DocumentNode) InsertAfter(leaf *DocumentNode, newNode *DocumentNode) bool {
+	if node.Leaves == nil || len(node.Leaves) == 0 {
 		if leaf == nil {
 			// New node is the first leaf
-			base.Leaves = make([]*DocumentNode, 0, 8)
-			base.Leaves = append(base.Leaves, newNode)
+			node.Leaves = make([]*DocumentNode, 0, 0)
+			node.Leaves = append(node.Leaves, newNode)
+			newNode.Parent = node
 			return true
 		}
 		return false
 	}
 	// Insert new node among leaves
-	i := base.FindLeafIndex(leaf)
+	i := node.FindLeafIndex(leaf)
 	if i == -1 {
 		return false // leaf is not found
 	}
-	newLeaves := make([]*DocumentNode, len(base.Leaves)+1)
+	newLeaves := make([]*DocumentNode, len(node.Leaves)+1)
 	// newLeaves = [leaves before and at i], newNode, [leaves after i]
-	copy(newLeaves, base.Leaves[0:i+1])
+	copy(newLeaves, node.Leaves[:i+1])
 	newLeaves[i+1] = newNode
-	copy(newLeaves[i+2:], base.Leaves[i:+1])
-	base.Leaves = newLeaves
+	copy(newLeaves[i+2:], node.Leaves[i:+1])
+	node.Leaves = newLeaves
+	newNode.Parent = node
 	return true
 }
