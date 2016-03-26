@@ -7,9 +7,9 @@ const (
 	SECTION_MATCH_NESTED_QUAD_ANCHOR   = 24 // For example <Foo>bar</Foo>
 )
 
-type SectionMatchMechanism int // Influence how section beginning/ending are detected
+type SectionMatchMechanism int // An automatically calculated value that influences detection of section opening/closing
 
-// Describe how sections are opened/closed.
+// Describe how sections are opened/closed. If there are no sections, leave all attributes at default.
 type SectionStyle struct {
 	OpeningPrefix, OpeningSuffix string
 	ClosingPrefix, ClosingSuffix string

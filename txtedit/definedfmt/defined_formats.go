@@ -120,3 +120,19 @@ var Dhcpd = analyser.AnalyserConfig{
 		OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
 	},
 }
+
+var Ntpd = analyser.AnalyserConfig{
+	StatementContinuationMarkers: []string{},
+	StatementEndingMarkers:       []string{"\n"},
+	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
+	TextQuoteStyle:               []string{"\""},
+	SectionStyle:                 analyser.SectionStyle{},
+}
+
+var Limits = analyser.AnalyserConfig{
+	StatementContinuationMarkers: []string{},
+	StatementEndingMarkers:       []string{"\n"},
+	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
+	TextQuoteStyle:               []string{"\""},
+	SectionStyle:                 analyser.SectionStyle{},
+}

@@ -3,8 +3,8 @@ package db
 import "github.com/HouzuoGuo/LinuxManagementConsole/txtedit/analyser"
 
 type NodePtr struct {
-	FileName string
-	Node     *analyser.DocumentNode
+	FileID int
+	Node   *analyser.DocumentNode
 }
 
 type DB struct {

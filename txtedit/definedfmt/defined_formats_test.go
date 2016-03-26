@@ -27,6 +27,8 @@ var samples = []struct {
 	{NamedZone, "named-zone"},
 	{Named, "named"},
 	{Dhcpd, "dhcpd"},
+	{Ntpd, "ntpd"},
+	{Limits, "limits"},
 }
 
 func GetTextAround(str string, pos, length int) (ret string) {

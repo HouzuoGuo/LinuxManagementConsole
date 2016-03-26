@@ -1,0 +1,35 @@
+restrict default limited kod nomodify notrap nopeer noquery
+restrict -6 default ignore
+
+restrict 192.168.0.0 mask 255.255.0.0 nomodify notrap
+restrict 127.0.0.1
+
+discard average 5 minimum 3
+
+driftfile /var/lib/ntp/drift/ntp.drift
+logfile /var/log/ntp
+
+server 0.pool.ntp.org
+server de.pool.ntp.org  iburst
+server ie.pool.ntp.org  iburst
+server au.pool.ntp.org  iburst
+
+restrict    default ignore
+restrict -6 default ignore
+
+restrict    127.0.0.1
+restrict -6 ::1
+
+server c.de iburst
+restrict    21.29.39.16 nomodify notrap nopeer noquery
+restrict -6 2a1:4f81:0:aa11::2:1 nomodify notrap nopeer noquery
+
+server b.de iburst
+restrict    23.23.39.65 nomodify notrap nopeer noquery
+restrict -6 2a1:4f81:0:a111::2:3 nomodify notrap nopeer noquery
+
+server a.de iburst
+restrict    21.39.23.16 nomodify notrap nopeer noquery
+restrict -6 2a1:4f81:0:a121::2:2 nomodify notrap nopeer noquery
+
+#comment test 1
