@@ -52,10 +52,10 @@ type CommentStyle struct {
 
 // Describe the writing style of the document so that analyser can break it down correctly.
 type AnalyserConfig struct {
-	StatementContinuationMarkers []string
-	StatementEndingMarkers       []string
-	CommentStyles                []CommentStyle
-	TextQuoteStyle               []string
-
-	SectionStyle SectionStyle
+	StatementContinuationMarkers []string       // Encounter of the markers will not end the current statement, but continue to concatenate tokens.
+	StatementEndingMarkers       []string       // Encounter of the markers immediately ends and finishes the current statement.
+	CommentStyles                []CommentStyle // Mark the beginning and closing of comments.
+	TextQuoteStyle               []string       // Character sequences that are identified as quotation marks, if surrounding a token.
+	TokenBreakMarkers            []string       // Encounter of the markers immediately ends and finishes the current token.
+	SectionStyle                 SectionStyle   // Mark the beginning and closing of sections.
 }

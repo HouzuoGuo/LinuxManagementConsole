@@ -7,6 +7,7 @@ var Sysconfig = analyser.AnalyserConfig{
 	StatementEndingMarkers:       []string{"\n"},
 	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
+	TokenBreakMarkers:            []string{"="},
 	SectionStyle:                 analyser.SectionStyle{},
 }
 
@@ -15,6 +16,7 @@ var Sysctl = analyser.AnalyserConfig{
 	StatementEndingMarkers:       []string{"\n"},
 	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
+	TokenBreakMarkers:            []string{"="},
 	SectionStyle:                 analyser.SectionStyle{},
 }
 
@@ -23,6 +25,7 @@ var Systemd = analyser.AnalyserConfig{
 	StatementEndingMarkers:       []string{"\n"},
 	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
+	TokenBreakMarkers:            []string{"="},
 	SectionStyle: analyser.SectionStyle{
 		OpeningPrefix: "[", OpeningSuffix: "]",
 		ClosingPrefix: "", ClosingSuffix: "",
@@ -35,6 +38,7 @@ var CronAllowDeny = analyser.AnalyserConfig{
 	StatementEndingMarkers:       []string{"\n"},
 	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{}},
 	TextQuoteStyle:               []string{},
+	TokenBreakMarkers:            []string{},
 	SectionStyle:                 analyser.SectionStyle{},
 }
 
@@ -43,6 +47,7 @@ var Cron = analyser.AnalyserConfig{
 	StatementEndingMarkers:       []string{"\n"},
 	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
+	TokenBreakMarkers:            []string{},
 	SectionStyle:                 analyser.SectionStyle{},
 }
 
@@ -51,6 +56,7 @@ var Hosts = analyser.AnalyserConfig{
 	StatementEndingMarkers:       []string{"\n"},
 	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
+	TokenBreakMarkers:            []string{},
 	SectionStyle:                 analyser.SectionStyle{},
 }
 
@@ -59,6 +65,7 @@ var Login = analyser.AnalyserConfig{
 	StatementEndingMarkers:       []string{"\n"},
 	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
+	TokenBreakMarkers:            []string{},
 	SectionStyle:                 analyser.SectionStyle{},
 }
 
@@ -67,6 +74,7 @@ var Nsswitch = analyser.AnalyserConfig{
 	StatementEndingMarkers:       []string{"\n"},
 	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
+	TokenBreakMarkers:            []string{},
 	SectionStyle:                 analyser.SectionStyle{},
 }
 
@@ -75,6 +83,7 @@ var Httpd = analyser.AnalyserConfig{
 	StatementEndingMarkers:       []string{"\n"},
 	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\"", "'"},
+	TokenBreakMarkers:            []string{":"},
 	SectionStyle: analyser.SectionStyle{
 		OpeningPrefix: "<", OpeningSuffix: ">",
 		ClosingPrefix: "</", ClosingSuffix: ">",
@@ -89,7 +98,8 @@ var Named = analyser.AnalyserConfig{
 		analyser.CommentStyle{Opening: "/*", Closing: "*/"},
 		analyser.CommentStyle{Opening: "//", Closing: "\n"},
 		analyser.CommentStyle{Opening: "#", Closing: "\n"}},
-	TextQuoteStyle: []string{"\"", "'"},
+	TextQuoteStyle:    []string{"\"", "'"},
+	TokenBreakMarkers: []string{},
 	SectionStyle: analyser.SectionStyle{
 		OpeningPrefix: "", OpeningSuffix: "{",
 		ClosingPrefix: "", ClosingSuffix: "};",
@@ -102,6 +112,7 @@ var NamedZone = analyser.AnalyserConfig{
 	StatementEndingMarkers:       []string{"\n"},
 	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: ";", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
+	TokenBreakMarkers:            []string{},
 	SectionStyle: analyser.SectionStyle{
 		OpeningPrefix: "", OpeningSuffix: "(",
 		ClosingPrefix: "", ClosingSuffix: ");",
@@ -114,6 +125,7 @@ var Dhcpd = analyser.AnalyserConfig{
 	StatementEndingMarkers:       []string{";\n", ";"},
 	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
+	TokenBreakMarkers:            []string{},
 	SectionStyle: analyser.SectionStyle{
 		OpeningPrefix: "", OpeningSuffix: "{",
 		ClosingPrefix: "", ClosingSuffix: "}",
@@ -126,6 +138,7 @@ var Ntpd = analyser.AnalyserConfig{
 	StatementEndingMarkers:       []string{"\n"},
 	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
+	TokenBreakMarkers:            []string{},
 	SectionStyle:                 analyser.SectionStyle{},
 }
 
@@ -134,5 +147,6 @@ var Limits = analyser.AnalyserConfig{
 	StatementEndingMarkers:       []string{"\n"},
 	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
+	TokenBreakMarkers:            []string{},
 	SectionStyle:                 analyser.SectionStyle{},
 }

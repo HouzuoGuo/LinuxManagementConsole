@@ -329,6 +329,21 @@ func (an *Analyser) saveQuoteOrCommentCharacters(str string) bool {
 	return false
 }
 
+// Immediately end and finish the current text, then save the marker into a new text piece.
+func (an *Analyser) breakText(marker string) {
+	if an.saveQuoteOrCommentCharacters(marker) {
+		an.debug.Printf("breakToken: the marker went to saveQuoteOrCommentCharacters")
+		return
+	}
+	an.saveMissedCharacters()
+	// Finish the current text
+	an.endText()
+	// Save the marker into its own text piece
+	an.createTextIfNil()
+	an.contextText.Text = marker
+	an.endText()
+}
+
 // Save missed text and prevent the next new statement from being created.
 func (an *Analyser) continueStatement(marker string) {
 	if an.saveQuoteOrCommentCharacters(marker) {
@@ -808,6 +823,10 @@ func (an *Analyser) Run() *DocumentNode {
 		} else if spaces, advance = an.lookForSpaces(); advance > 0 {
 			an.debug.Printf("Spaces: length %d", advance)
 			an.saveSpaces(spaces)
+			an.previousMarkerPosition = an.herePosition + advance
+		} else if match, advance = an.lookForAnyOf(an.config.TokenBreakMarkers); advance > 0 {
+			an.debug.Printf("Breaks: %s", match)
+			an.breakText(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookForAnyOf(an.config.StatementContinuationMarkers); advance > 0 {
 			an.debug.Printf("Statement continuation: %s", match)
