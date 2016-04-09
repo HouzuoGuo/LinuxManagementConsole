@@ -1,18 +1,18 @@
-package definedfmt
+package predeflex
 
 import (
 	"fmt"
-	"github.com/HouzuoGuo/LinuxManagementConsole/txtedit/analyser"
+	"github.com/HouzuoGuo/LinuxManagementConsole/txtedit/lexer"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
 )
 
-var sampleTextLocation = os.Getenv("GOPATH") + "/src/github.com/HouzuoGuo/LinuxManagementConsole/txtedit/definedfmt/samples/"
+var sampleTextLocation = os.Getenv("GOPATH") + "/src/github.com/HouzuoGuo/LinuxManagementConsole/txtedit/commonlexer/samples/"
 
 var samples = []struct {
-	config   analyser.AnalyserConfig
+	config   lexer.LexerConfig
 	fileName string
 }{
 	{Sysconfig, "sysconfig"},
@@ -51,11 +51,11 @@ func TestTextBreakdown(t *testing.T) {
 		}
 		txtInputStr := string(txtInput)
 
-		an := analyser.NewAnalyser(txtInputStr, &sample.config, &analyser.NoopDebugger{})
+		an := lexer.NewLexer(txtInputStr, &sample.config, &lexer.NoopDebugger{})
 		fmt.Println("@@@@@@@@@@@@@@Going to analyse", sample.fileName)
 		rootNode := an.Run()
 		reproducedText := rootNode.TextString()
-		fmt.Println(analyser.DebugNode(rootNode, 0))
+		fmt.Println(lexer.DebugNode(rootNode, 0))
 		lenOriginal := len(txtInputStr)
 		lenReproduced := len(reproducedText)
 		if lenReproduced >= lenOriginal {

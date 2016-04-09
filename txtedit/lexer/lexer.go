@@ -1,16 +1,16 @@
-package analyser
+package lexer
 
 /*
-Text analyser analyses input text character by character, breaks down the whole document into smaller
+The lexer analyses input text character by character, breaks down the whole document into smaller
 pieces that are easier for further analysis and reproduction of document text.
 */
-type Analyser struct {
-	textInput string           // the original input text
-	config    *AnalyserConfig  // document style specification and more configuration
-	debug     AnalyserDebugger // output from analyser's progress, and output of debug information
+type Lexer struct {
+	textInput string        // the original input text
+	config    *LexerConfig  // document style specification and more configuration
+	debug     LexerDebugger // handle output from lexer's progress and debug information
 
 	previousMarkerPosition int           // the character index where previous marker was encountered
-	herePosition           int           // index of the current character where analyser has progressed
+	herePosition           int           // index of the current character where lexer has progressed
 	rootNode               *DocumentNode // the root node of the broken down document
 	thisNode               *DocumentNode // reference to the current document node
 
@@ -22,18 +22,18 @@ type Analyser struct {
 	statementCounter int // total number of statements that have been ended
 }
 
-// Initialise a new text analyser.
-func NewAnalyser(textInput string, config *AnalyserConfig, debugger AnalyserDebugger) (ret *Analyser) {
-	ret = &Analyser{textInput: textInput, config: config, debug: debugger}
+// Initialise a new text lexer.
+func NewLexer(textInput string, config *LexerConfig, debugger LexerDebugger) (ret *Lexer) {
+	ret = &Lexer{textInput: textInput, config: config, debug: debugger}
 	ret.thisNode = &DocumentNode{Parent: nil, Obj: nil, Leaves: make([]*DocumentNode, 0, 8)}
 	ret.rootNode = ret.thisNode
 	ret.config.SectionStyle.SetSectionMatchMechanism()
-	ret.debug.Printf("NewAnalyser: initialised with section match mechanism being %v", ret.config.SectionStyle.SectionMatchMechanism)
+	ret.debug.Printf("NewLexer: initialised with section match mechanism being %v", ret.config.SectionStyle.SectionMatchMechanism)
 	return
 }
 
 // Create a new sibling node if the current node is already holding an object. Move reference to the new sibling.
-func (an *Analyser) createSiblingNodeIfNotNil() {
+func (an *Lexer) createSiblingNodeIfNotNil() {
 	if an.thisNode.Obj == nil {
 		an.debug.Printf("createSiblingNodeIfNotNil: does nothing when this node %p is still empty", an.thisNode)
 		return
@@ -64,7 +64,7 @@ func (an *Analyser) createSiblingNodeIfNotNil() {
 If the current node already holds an object, then create a new sibling.
 Save an object in the current node.
 */
-func (an *Analyser) createDocumentSiblingNode(nodeContent interface{}) {
+func (an *Lexer) createDocumentSiblingNode(nodeContent interface{}) {
 	if nodeContent == nil {
 		an.debug.Printf("createDocumentSiblingNode: does nothing when node content is nil")
 		return
@@ -80,7 +80,7 @@ func (an *Analyser) createDocumentSiblingNode(nodeContent interface{}) {
 }
 
 // Create a new leaf node and move reference to the new leaf.
-func (an *Analyser) createLeaf() {
+func (an *Lexer) createLeaf() {
 	newLeaf := &DocumentNode{Parent: an.thisNode, Leaves: make([]*DocumentNode, 0, 8)}
 	an.thisNode.Leaves = append(an.thisNode.Leaves, newLeaf)
 	an.debug.Printf("createLeaf: %p now has a new leaf %p", an.thisNode, newLeaf)
@@ -88,7 +88,7 @@ func (an *Analyser) createLeaf() {
 }
 
 // If comment context is nil, assign the context a new comment entity.
-func (an *Analyser) createCommentIfNil(commentStyle CommentStyle) {
+func (an *Lexer) createCommentIfNil(commentStyle CommentStyle) {
 	if an.contextComment == nil {
 		an.contextComment = new(Comment)
 		an.contextComment.CommentStyle = commentStyle
@@ -100,7 +100,7 @@ func (an *Analyser) createCommentIfNil(commentStyle CommentStyle) {
 }
 
 // If comment context is not nil, move the comment into statement context and clear comment context.
-func (an *Analyser) endComment(marker string, closed bool) {
+func (an *Lexer) endComment(marker string, closed bool) {
 	if an.contextComment == nil {
 		return
 	}
@@ -129,7 +129,7 @@ func (an *Analyser) endComment(marker string, closed bool) {
 }
 
 // If text context is nil, assign the context a new text entity.
-func (an *Analyser) createTextIfNil() {
+func (an *Lexer) createTextIfNil() {
 	if an.contextText == nil {
 		an.contextText = new(Text)
 		an.debug.Printf("createTextIfNil: context text is assigned to %p", an.contextText)
@@ -137,7 +137,7 @@ func (an *Analyser) createTextIfNil() {
 }
 
 // If text context is not nil, move the text into statement context and clear text context.
-func (an *Analyser) endText() {
+func (an *Lexer) endText() {
 	if an.contextText == nil {
 		return
 	}
@@ -149,7 +149,7 @@ func (an *Analyser) endText() {
 }
 
 // If statement context is nil, create a new statement as document node, and assign it to the context.
-func (an *Analyser) createStatementIfNil() {
+func (an *Lexer) createStatementIfNil() {
 	if an.contextStatement == nil {
 		an.contextStatement = new(Statement)
 		an.createDocumentSiblingNode(an.contextStatement)
@@ -158,7 +158,7 @@ func (an *Analyser) createStatementIfNil() {
 }
 
 // Move context text and comment into context statement (create new statement if necessary), and clear context statement.
-func (an *Analyser) endStatement(ending string) {
+func (an *Lexer) endStatement(ending string) {
 	an.debug.Printf("endStatement: trying to end with %v", []byte(ending))
 	if an.contextComment != nil && // if there is still a comment ...
 		!an.contextComment.Closed && // that has not been closed ...
@@ -217,7 +217,7 @@ func (an *Analyser) endStatement(ending string) {
 In the context comment or text, save the characters that have not yet been placed in any entity.
 Return true only if the missed characters has been saved.
 */
-func (an *Analyser) saveMissedCharacters() bool {
+func (an *Lexer) saveMissedCharacters() bool {
 	if an.herePosition-an.previousMarkerPosition <= 0 {
 		return false // nothing missed
 	}
@@ -237,7 +237,7 @@ func (an *Analyser) saveMissedCharacters() bool {
 }
 
 // Place the space characters inside statement indentation or text entity's trailing spaces.
-func (an *Analyser) saveSpaces(spaces string) {
+func (an *Lexer) saveSpaces(spaces string) {
 	an.saveMissedCharacters()
 	length := len(spaces)
 	if an.ignoreNewStatementOnce {
@@ -313,7 +313,7 @@ func (an *Analyser) saveSpaces(spaces string) {
 }
 
 // In the context comment or quoted text, save the characters. Return true only if such context is found.
-func (an *Analyser) saveQuoteOrCommentCharacters(str string) bool {
+func (an *Lexer) saveQuoteOrCommentCharacters(str string) bool {
 	if an.contextComment != nil {
 		an.saveMissedCharacters()
 		an.debug.Printf("saveQuoteOrCommentCharacters: save '%s' in context comment %p", str, an.contextComment)
@@ -330,7 +330,7 @@ func (an *Analyser) saveQuoteOrCommentCharacters(str string) bool {
 }
 
 // Immediately end and finish the current text, then save the marker into a new text piece.
-func (an *Analyser) breakText(marker string) {
+func (an *Lexer) breakText(marker string) {
 	if an.saveQuoteOrCommentCharacters(marker) {
 		an.debug.Printf("breakToken: the marker went to saveQuoteOrCommentCharacters")
 		return
@@ -345,7 +345,7 @@ func (an *Analyser) breakText(marker string) {
 }
 
 // Save missed text and prevent the next new statement from being created.
-func (an *Analyser) continueStatement(marker string) {
+func (an *Lexer) continueStatement(marker string) {
 	if an.saveQuoteOrCommentCharacters(marker) {
 		an.debug.Printf("continueStatement: the marker went to saveQuoteOrCommentCharacters")
 		return
@@ -360,7 +360,7 @@ func (an *Analyser) continueStatement(marker string) {
 }
 
 // Create a new section as document node, then shift thisNode to a leaf.
-func (an *Analyser) createSection() {
+func (an *Lexer) createSection() {
 	an.endStatement("")
 	newSection := new(Section)
 	newSection.StatementCounterAtOpening = an.statementCounter
@@ -379,7 +379,7 @@ func (an *Analyser) createSection() {
 Look for a Statement in the previous sibling and remove the sibling node.
 Return the Statement if it is found, return nil if not found.
 */
-func (an *Analyser) removePreviousSiblingStatement() *Statement {
+func (an *Lexer) removePreviousSiblingStatement() *Statement {
 	index := an.thisNode.GetMyLeafIndex()
 	if index == -1 {
 		an.debug.Printf("removePreviousSiblingStatement: cannot find node %p's leaf index",
@@ -411,7 +411,7 @@ func (an *Analyser) removePreviousSiblingStatement() *Statement {
 }
 
 // Assign the section its first and final statements if necessary, then move thisNode to a new sibling of its parent's.
-func (an *Analyser) endSection() {
+func (an *Lexer) endSection() {
 	if _, sect := an.getSectionState(); sect == nil {
 		an.debug.Printf("endSection: this node %p is not in a section", an.thisNode)
 	} else {
@@ -505,7 +505,7 @@ const (
 
 type SectionState int
 
-func (an *Analyser) getSectionState() (SectionState, *Section) {
+func (an *Lexer) getSectionState() (SectionState, *Section) {
 	// If thisNode is in a section, the parent node should hold a *Section.
 	if an.thisNode.Parent == nil {
 		an.debug.Printf("getSectionState: node %p's parent is nil", an.thisNode)
@@ -564,7 +564,7 @@ func (an *Analyser) getSectionState() (SectionState, *Section) {
 }
 
 // Save the section opening's prefix marking, create a new section if there is not one.
-func (an *Analyser) setSectionOpeningPrefix(prefix string) {
+func (an *Lexer) setSectionOpeningPrefix(prefix string) {
 	if an.saveQuoteOrCommentCharacters(prefix) {
 		return
 	}
@@ -596,7 +596,7 @@ func (an *Analyser) setSectionOpeningPrefix(prefix string) {
 }
 
 // Save the section opening's suffix marking.
-func (an *Analyser) setSectionOpeningSuffix(suffix string) {
+func (an *Lexer) setSectionOpeningSuffix(suffix string) {
 	if an.saveQuoteOrCommentCharacters(suffix) {
 		return
 	}
@@ -631,7 +631,7 @@ func (an *Analyser) setSectionOpeningSuffix(suffix string) {
 }
 
 // Save the section opening's prefix marking.
-func (an *Analyser) setSectionClosingPrefix(prefix string) {
+func (an *Lexer) setSectionClosingPrefix(prefix string) {
 	if an.saveQuoteOrCommentCharacters(prefix) {
 		return
 	}
@@ -652,7 +652,7 @@ func (an *Analyser) setSectionClosingPrefix(prefix string) {
 }
 
 // Save the section ending's suffix marking.
-func (an *Analyser) setSectionClosingSuffix(suffix string) {
+func (an *Lexer) setSectionClosingSuffix(suffix string) {
 	if an.saveQuoteOrCommentCharacters(suffix) {
 		return
 	}
@@ -679,7 +679,7 @@ func (an *Analyser) setSectionClosingSuffix(suffix string) {
 }
 
 // Look for the string from position here. Return the matching string and length of the match.
-func (an *Analyser) lookFor(match string) (string, int) {
+func (an *Lexer) lookFor(match string) (string, int) {
 	if len(match) == 1 {
 		// Match single character
 		if an.textInput[an.herePosition] == match[0] {
@@ -698,7 +698,7 @@ func (an *Analyser) lookFor(match string) (string, int) {
 }
 
 // Look for any string among the match list, from position here. Return the matching string and length of the match.
-func (an *Analyser) lookForAnyOf(matches []string) (string, int) {
+func (an *Lexer) lookForAnyOf(matches []string) (string, int) {
 	for _, match := range matches {
 		if len(match) == 1 {
 			// Match single character
@@ -725,7 +725,7 @@ func (an *Analyser) lookForAnyOf(matches []string) (string, int) {
 Look for consecutive spaces from here position. Return the string of consecutive spaces and its length.
 Space characters are ' ' and '\t'.
 */
-func (an *Analyser) lookForSpaces() (string, int) {
+func (an *Lexer) lookForSpaces() (string, int) {
 	pos := an.herePosition
 	for ; pos < len(an.textInput); pos++ {
 		if an.textInput[pos] != ' ' && an.textInput[pos] != '\t' {
@@ -735,8 +735,8 @@ func (an *Analyser) lookForSpaces() (string, int) {
 	return an.textInput[an.herePosition:pos], pos - an.herePosition
 }
 
-// Toggle text quoting in the analyser' context.
-func (an *Analyser) setQuote(quoteStyle string) {
+// Toggle text quoting in the lexer' context.
+func (an *Lexer) setQuote(quoteStyle string) {
 	if an.contextComment != nil {
 		an.saveMissedCharacters()
 		an.debug.Printf("setQuote: quote '%s' goes into context comment", quoteStyle)
@@ -764,8 +764,8 @@ func (an *Analyser) setQuote(quoteStyle string) {
 	}
 }
 
-// Tell the analyser to open a comment if the text at position here matches any comment opening style.
-func (an *Analyser) isOpeningComment() int {
+// Tell the lexer to open a comment if the text at position here matches any comment opening style.
+func (an *Lexer) isOpeningComment() int {
 	if an.contextComment != nil {
 		// A comment is already open, so it is not possible to open another comment.
 		return 0
@@ -782,8 +782,8 @@ func (an *Analyser) isOpeningComment() int {
 	return 0
 }
 
-// Tell the analyser to close a comment if the text at position here matches any comment closing style.
-func (an *Analyser) isClosingComment() int {
+// Tell the lexer to close a comment if the text at position here matches any comment closing style.
+func (an *Lexer) isClosingComment() int {
 	if an.contextComment == nil {
 		// Comment has not been opened, so it is not possible to close a comment.
 		return 0
@@ -800,8 +800,8 @@ func (an *Analyser) isClosingComment() int {
 	return 0
 }
 
-// Break down input text according to analyser's configuration. Return the root document node.
-func (an *Analyser) Run() *DocumentNode {
+// Break down input text according to lexer's configuration. Return the root document node.
+func (an *Lexer) Run() *DocumentNode {
 	/*
 		The loop visits the input text character by character, which sets "advance" to 1; unless it meets
 		a marker, which can be longer than one character, and "advance" will be the marker string's length.

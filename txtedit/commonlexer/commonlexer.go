@@ -1,152 +1,152 @@
-package definedfmt
+package predeflex
 
-import "github.com/HouzuoGuo/LinuxManagementConsole/txtedit/analyser"
+import "github.com/HouzuoGuo/LinuxManagementConsole/txtedit/lexer"
 
-var Sysconfig = analyser.AnalyserConfig{
+var Sysconfig = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
 	TokenBreakMarkers:            []string{"="},
-	SectionStyle:                 analyser.SectionStyle{},
+	SectionStyle:                 lexer.SectionStyle{},
 }
 
-var Sysctl = analyser.AnalyserConfig{
+var Sysctl = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	TokenBreakMarkers:            []string{"="},
-	SectionStyle:                 analyser.SectionStyle{},
+	SectionStyle:                 lexer.SectionStyle{},
 }
 
-var Systemd = analyser.AnalyserConfig{
+var Systemd = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
 	TokenBreakMarkers:            []string{"="},
-	SectionStyle: analyser.SectionStyle{
+	SectionStyle: lexer.SectionStyle{
 		OpeningPrefix: "[", OpeningSuffix: "]",
 		ClosingPrefix: "", ClosingSuffix: "",
 		OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
 	},
 }
 
-var CronAllowDeny = analyser.AnalyserConfig{
+var CronAllowDeny = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{}},
+	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{}},
 	TextQuoteStyle:               []string{},
 	TokenBreakMarkers:            []string{},
-	SectionStyle:                 analyser.SectionStyle{},
+	SectionStyle:                 lexer.SectionStyle{},
 }
 
-var Cron = analyser.AnalyserConfig{
+var Cron = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	TokenBreakMarkers:            []string{},
-	SectionStyle:                 analyser.SectionStyle{},
+	SectionStyle:                 lexer.SectionStyle{},
 }
 
-var Hosts = analyser.AnalyserConfig{
+var Hosts = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	TokenBreakMarkers:            []string{},
-	SectionStyle:                 analyser.SectionStyle{},
+	SectionStyle:                 lexer.SectionStyle{},
 }
 
-var Login = analyser.AnalyserConfig{
+var Login = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	TokenBreakMarkers:            []string{},
-	SectionStyle:                 analyser.SectionStyle{},
+	SectionStyle:                 lexer.SectionStyle{},
 }
 
-var Nsswitch = analyser.AnalyserConfig{
+var Nsswitch = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	TokenBreakMarkers:            []string{},
-	SectionStyle:                 analyser.SectionStyle{},
+	SectionStyle:                 lexer.SectionStyle{},
 }
 
-var Httpd = analyser.AnalyserConfig{
+var Httpd = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{"\\"},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\"", "'"},
 	TokenBreakMarkers:            []string{":"},
-	SectionStyle: analyser.SectionStyle{
+	SectionStyle: lexer.SectionStyle{
 		OpeningPrefix: "<", OpeningSuffix: ">",
 		ClosingPrefix: "</", ClosingSuffix: ">",
 		OpenSectionWithAStatement: true, CloseSectionWithAStatement: true,
 	},
 }
 
-var Named = analyser.AnalyserConfig{
+var Named = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{"\\"},
 	StatementEndingMarkers:       []string{";\n", ";"},
-	CommentStyles: []analyser.CommentStyle{
-		analyser.CommentStyle{Opening: "/*", Closing: "*/"},
-		analyser.CommentStyle{Opening: "//", Closing: "\n"},
-		analyser.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles: []lexer.CommentStyle{
+		lexer.CommentStyle{Opening: "/*", Closing: "*/"},
+		lexer.CommentStyle{Opening: "//", Closing: "\n"},
+		lexer.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:    []string{"\"", "'"},
 	TokenBreakMarkers: []string{},
-	SectionStyle: analyser.SectionStyle{
+	SectionStyle: lexer.SectionStyle{
 		OpeningPrefix: "", OpeningSuffix: "{",
 		ClosingPrefix: "", ClosingSuffix: "};",
 		OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
 	},
 }
 
-var NamedZone = analyser.AnalyserConfig{
+var NamedZone = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: ";", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: ";", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	TokenBreakMarkers:            []string{},
-	SectionStyle: analyser.SectionStyle{
+	SectionStyle: lexer.SectionStyle{
 		OpeningPrefix: "", OpeningSuffix: "(",
 		ClosingPrefix: "", ClosingSuffix: ");",
 		OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
 	},
 }
 
-var Dhcpd = analyser.AnalyserConfig{
+var Dhcpd = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{";\n", ";"},
-	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
 	TokenBreakMarkers:            []string{},
-	SectionStyle: analyser.SectionStyle{
+	SectionStyle: lexer.SectionStyle{
 		OpeningPrefix: "", OpeningSuffix: "{",
 		ClosingPrefix: "", ClosingSuffix: "}",
 		OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
 	},
 }
 
-var Ntpd = analyser.AnalyserConfig{
+var Ntpd = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
 	TokenBreakMarkers:            []string{},
-	SectionStyle:                 analyser.SectionStyle{},
+	SectionStyle:                 lexer.SectionStyle{},
 }
 
-var Limits = analyser.AnalyserConfig{
+var Limits = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []analyser.CommentStyle{analyser.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
 	TokenBreakMarkers:            []string{},
-	SectionStyle:                 analyser.SectionStyle{},
+	SectionStyle:                 lexer.SectionStyle{},
 }

@@ -1,4 +1,4 @@
-package analyser
+package lexer
 
 import (
 	"bytes"
@@ -31,12 +31,12 @@ func DebugNode(node *DocumentNode, indent int) string {
 	return out.String()
 }
 
-// Offer debugging capabilities to an Analyser.
-type AnalyserDebugger interface {
+// Offer debugging capabilities to a lexer.
+type LexerDebugger interface {
 	Printf(format string, msg ...interface{})
 }
 
-// An AnalyzerDebugger implementation that is silent and does nothing.
+// A LexerDebugger implementation that is silent and does nothing.
 type NoopDebugger struct {
 }
 
@@ -44,7 +44,7 @@ func (debug *NoopDebugger) Printf(format string, msg ...interface{}) {
 	// Intentionally left blank
 }
 
-// An AnalyzerDebugger implementation that prints messages to standard output.
+// A LexerDebugger implementation that prints messages to standard output.
 type PrintDebugger struct {
 }
 

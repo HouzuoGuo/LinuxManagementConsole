@@ -1,4 +1,4 @@
-package analyser
+package lexer
 
 import (
 	"fmt"
@@ -12,8 +12,8 @@ d
 </c>
 </a>`
 
-func TestAnalyser(t *testing.T) {
-	an := NewAnalyser(input, &AnalyserConfig{
+func TestLexer(t *testing.T) {
+	an := NewLexer(input, &LexerConfig{
 		StatementContinuationMarkers: []string{"\\"},
 		StatementEndingMarkers:       []string{"\n"},
 		CommentStyles:                []CommentStyle{CommentStyle{Opening: "#", Closing: "\n"}},
@@ -42,9 +42,9 @@ var input2 = `a{
 };
 #abc`
 
-func TestAnalyser2(t *testing.T) {
-	an := NewAnalyser(input2,
-		&AnalyserConfig{
+func TestLexer2(t *testing.T) {
+	an := NewLexer(input2,
+		&LexerConfig{
 			StatementContinuationMarkers: []string{"\\"},
 			StatementEndingMarkers:       []string{";"},
 			CommentStyles: []CommentStyle{
@@ -80,13 +80,14 @@ h
 [i]
 [j]`
 
-func TestAnalyser3(t *testing.T) {
-	an := NewAnalyser(input3,
-		&AnalyserConfig{
+func TestLexer3(t *testing.T) {
+	an := NewLexer(input3,
+		&LexerConfig{
 			StatementContinuationMarkers: []string{},
 			StatementEndingMarkers:       []string{"\n"},
 			CommentStyles:                []CommentStyle{CommentStyle{Opening: "#", Closing: "\n"}},
 			TextQuoteStyle:               []string{"\""},
+			TokenBreakMarkers:            []string{"="},
 			SectionStyle: SectionStyle{
 				OpeningPrefix: "[", OpeningSuffix: "]",
 				ClosingPrefix: "", ClosingSuffix: "",
@@ -112,9 +113,9 @@ var input4 = `
 #
 USERDEL_POSTCMD	/usr/sbin/userdel-post.local`
 
-func TestAnalyser4(t *testing.T) {
-	an := NewAnalyser(input4,
-		&AnalyserConfig{
+func TestLexer4(t *testing.T) {
+	an := NewLexer(input4,
+		&LexerConfig{
 			StatementContinuationMarkers: []string{},
 			StatementEndingMarkers:       []string{"\n"},
 			CommentStyles:                []CommentStyle{CommentStyle{Opening: "#", Closing: "\n"}},

@@ -1,4 +1,4 @@
-package analyser
+package lexer
 
 const (
 	SECTION_MATCH_FLAT_SINGLE_ANCHOR   = 11 // For example ==Foobar
@@ -36,7 +36,7 @@ func (style *SectionStyle) SetSectionMatchMechanism() {
 		style.SectionMatchMechanism = SECTION_MATCH_FLAT_SINGLE_ANCHOR
 	}
 	/*
-		Ambiguous section suffixes require special treatment in the analyser according to the bool flag.
+		Ambiguous section suffixes require special treatment in the lexer according to the bool flag.
 		This is an example of using ambiguous suffixes: <Foo>bar</Foo>
 		This is an example of non-ambiguous suffixes: <Foo>bar</Foo}
 	*/
@@ -50,8 +50,8 @@ type CommentStyle struct {
 	Opening, Closing string
 }
 
-// Describe the writing style of the document so that analyser can break it down correctly.
-type AnalyserConfig struct {
+// Describe the writing style of the document so that lexer can break it down correctly.
+type LexerConfig struct {
 	StatementContinuationMarkers []string       // Encounter of the markers will not end the current statement, but continue to concatenate tokens.
 	StatementEndingMarkers       []string       // Encounter of the markers immediately ends and finishes the current statement.
 	CommentStyles                []CommentStyle // Mark the beginning and closing of comments.
