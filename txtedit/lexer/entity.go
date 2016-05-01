@@ -3,6 +3,7 @@ package lexer
 import (
 	"bytes"
 	"fmt"
+	"strings"
 )
 
 // Get the descriptive debug information from the document entity.
@@ -84,6 +85,51 @@ func (stmt *Statement) TextString() string {
 	}
 	out.WriteString(stmt.Ending)
 	return out.String()
+}
+
+/*
+Skipping the first N pieces (no matter text or not), then scan through the remaining pieces, looking for the
+specified string in the text pieces. Return index of the text piece.
+*/
+func (stmt *Statement) IndexOfText(skip int, str string, ignoreCase bool) int {
+	if ignoreCase {
+		str = strings.ToLower(str)
+	}
+	for i, piece := range stmt.Pieces[skip+1:] {
+		switch thing := piece.(type) {
+		case *Text:
+			if ignoreCase && strings.ToLower(thing.Text) == str || !ignoreCase && thing.Text == str {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
+/*
+Skipping the first N pieces (no matter text or not), then scan through the remaining pieces, looking for the
+sequence of strings in the text pieces, and return index to each piece.
+*/
+func (stmt *Statement) IndexOfTextSeq(skip int, seq []string, ignoreCase bool) (indexes []int, sufficient bool) {
+	indexes = make([]int, 0, len(seq))
+	if ignoreCase {
+		for i, str := range seq {
+			seq[i] = strings.ToLower(str)
+		}
+	}
+	for seqPiece, stmtPiece := 0, skip+1; seqPiece < len(seq) && stmtPiece < len(stmt.Pieces); {
+		switch thing := stmt.Pieces[stmtPiece].(type) {
+		case *Text:
+			if ignoreCase && strings.ToLower(thing.Text) == seq[seqPiece] || !ignoreCase && thing.Text == seq[seqPiece] {
+				indexes = append(indexes, stmtPiece)
+				seqPiece++
+				continue
+			}
+		}
+		stmtPiece++
+	}
+	sufficient = len(indexes) == len(seq)
+	return
 }
 
 /*
