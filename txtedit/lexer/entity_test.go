@@ -7,7 +7,7 @@ import (
 
 func TestManipulatingParentNode(t *testing.T) {
 	base := &DocumentNode{}
-	node1 := &DocumentNode{Obj: &Text{Text: "node1"}}
+	node1 := &DocumentNode{Entity: &Text{Text: "node1"}}
 
 	// Wrong leaf anchor
 	if base.InsertBefore(node1, node1) {
@@ -23,7 +23,7 @@ func TestManipulatingParentNode(t *testing.T) {
 	if i := base.FindLeafIndex(node1); i != 0 {
 		t.Fatal(i)
 	}
-	node0 := &DocumentNode{Obj: &Text{Text: "node0"}}
+	node0 := &DocumentNode{Entity: &Text{Text: "node0"}}
 	if !base.InsertBefore(node1, node0) {
 		t.Fatal("not done")
 	}
@@ -33,7 +33,7 @@ func TestManipulatingParentNode(t *testing.T) {
 	if i := base.FindLeafIndex(node1); i != 1 {
 		t.Fatal(i)
 	}
-	node2 := &DocumentNode{Obj: &Text{Text: "node2"}}
+	node2 := &DocumentNode{Entity: &Text{Text: "node2"}}
 	if !base.InsertAfter(node1, node2) {
 		t.Fatal("not done")
 	}
@@ -48,7 +48,7 @@ func TestManipulatingParentNode(t *testing.T) {
 
 func TestManipulatingNode(t *testing.T) {
 	base := &DocumentNode{}
-	node1 := &DocumentNode{Obj: &Text{Text: "node1"}}
+	node1 := &DocumentNode{Entity: &Text{Text: "node1"}}
 
 	// Wrong leaf
 	if base.InsertBeforeSelf(node1) {
@@ -61,11 +61,11 @@ func TestManipulatingNode(t *testing.T) {
 	if !base.InsertAfter(nil, node1) {
 		t.Fatal("not done")
 	}
-	node0 := &DocumentNode{Obj: &Text{Text: "node0"}}
+	node0 := &DocumentNode{Entity: &Text{Text: "node0"}}
 	if !node1.InsertBeforeSelf(node0) {
 		t.Fatal("not done")
 	}
-	node2 := &DocumentNode{Obj: &Text{Text: "node2"}}
+	node2 := &DocumentNode{Entity: &Text{Text: "node2"}}
 	if !node1.InsertAfterSelf(node2) {
 		t.Fatal("not done")
 	}

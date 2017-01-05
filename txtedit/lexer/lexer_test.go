@@ -16,7 +16,7 @@ func TestLexer(t *testing.T) {
 	an := NewLexer(input, &LexerConfig{
 		StatementContinuationMarkers: []string{"\\"},
 		StatementEndingMarkers:       []string{"\n"},
-		CommentStyles:                []CommentStyle{CommentStyle{Opening: "#", Closing: "\n"}},
+		CommentStyles:                []CommentStyle{{Opening: "#", Closing: "\n"}},
 		TextQuoteStyle:               []string{"\"", "'"},
 		SectionStyle: SectionStyle{
 			OpeningPrefix: "<", OpeningSuffix: ">",
@@ -24,15 +24,15 @@ func TestLexer(t *testing.T) {
 			OpenSectionWithAStatement: true, CloseSectionWithAStatement: true,
 		},
 	},
-		&PrintDebugger{})
+		&LexerDebugStdout{})
 
 	an.Run()
 	fmt.Println(DebugNode(an.rootNode, 0))
 	fmt.Println("Reproduced:")
-	fmt.Println(an.rootNode.TextString())
+	fmt.Println(an.rootNode.VerbatimText())
 	fmt.Println([]byte(input))
-	fmt.Println([]byte(an.rootNode.TextString()))
-	if an.rootNode.TextString() != input {
+	fmt.Println([]byte(an.rootNode.VerbatimText()))
+	if an.rootNode.VerbatimText() != input {
 		t.Fatal("no match")
 	}
 }
@@ -48,9 +48,9 @@ func TestLexer2(t *testing.T) {
 			StatementContinuationMarkers: []string{"\\"},
 			StatementEndingMarkers:       []string{";"},
 			CommentStyles: []CommentStyle{
-				CommentStyle{Opening: "/*", Closing: "*/"},
-				CommentStyle{Opening: "//", Closing: "\n"},
-				CommentStyle{Opening: "#", Closing: "\n"}},
+				{Opening: "/*", Closing: "*/"},
+				{Opening: "//", Closing: "\n"},
+				{Opening: "#", Closing: "\n"}},
 			TextQuoteStyle: []string{"\"", "'"},
 			SectionStyle: SectionStyle{
 				OpeningPrefix: "", OpeningSuffix: "{",
@@ -58,13 +58,13 @@ func TestLexer2(t *testing.T) {
 				OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
 			},
 		},
-		&PrintDebugger{})
+		&LexerDebugStdout{})
 
 	an.Run()
 	fmt.Println(DebugNode(an.rootNode, 0))
 	fmt.Println("Reproduced:")
-	fmt.Println(an.rootNode.TextString())
-	if an.rootNode.TextString() != input2 {
+	fmt.Println(an.rootNode.VerbatimText())
+	if an.rootNode.VerbatimText() != input2 {
 		t.Fatal("no match")
 	}
 }
@@ -85,7 +85,7 @@ func TestLexer3(t *testing.T) {
 		&LexerConfig{
 			StatementContinuationMarkers: []string{},
 			StatementEndingMarkers:       []string{"\n"},
-			CommentStyles:                []CommentStyle{CommentStyle{Opening: "#", Closing: "\n"}},
+			CommentStyles:                []CommentStyle{{Opening: "#", Closing: "\n"}},
 			TextQuoteStyle:               []string{"\""},
 			TokenBreakMarkers:            []string{"="},
 			SectionStyle: SectionStyle{
@@ -94,13 +94,13 @@ func TestLexer3(t *testing.T) {
 				OpenSectionWithAStatement: true, CloseSectionWithAStatement: false,
 			},
 		},
-		&PrintDebugger{})
+		&LexerDebugStdout{})
 
 	an.Run()
 	fmt.Println(DebugNode(an.rootNode, 0))
 	fmt.Println("Reproduced:")
-	fmt.Println(an.rootNode.TextString())
-	if an.rootNode.TextString() != input3 {
+	fmt.Println(an.rootNode.VerbatimText())
+	if an.rootNode.VerbatimText() != input3 {
 		t.Fatal("no match")
 	}
 }
@@ -118,17 +118,17 @@ func TestLexer4(t *testing.T) {
 		&LexerConfig{
 			StatementContinuationMarkers: []string{},
 			StatementEndingMarkers:       []string{"\n"},
-			CommentStyles:                []CommentStyle{CommentStyle{Opening: "#", Closing: "\n"}},
+			CommentStyles:                []CommentStyle{{Opening: "#", Closing: "\n"}},
 			TextQuoteStyle:               []string{},
 			SectionStyle:                 SectionStyle{},
 		},
-		&PrintDebugger{})
+		&LexerDebugStdout{})
 
 	an.Run()
 	fmt.Println(DebugNode(an.rootNode, 0))
 	fmt.Println("Reproduced:")
-	fmt.Println(an.rootNode.TextString())
-	if an.rootNode.TextString() != input4 {
+	fmt.Println(an.rootNode.VerbatimText())
+	if an.rootNode.VerbatimText() != input4 {
 		t.Fatal("no match")
 	}
 }

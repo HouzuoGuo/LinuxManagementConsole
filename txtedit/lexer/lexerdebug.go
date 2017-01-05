@@ -14,10 +14,13 @@ func DebugNode(node *DocumentNode, indent int) string {
 		out.WriteString(prefixIndent + "(nil node)\n")
 		return out.String()
 	}
-	if node.Obj == nil {
+	if node.Entity == nil {
 		out.WriteString(prefixIndent + "Node - (empty)")
+	} else if sect, ok := node.Entity.(*Section); ok {
+		// Section does not implement ContainVerbatimText
+		out.WriteString(prefixIndent + "Node - " + sect.DebugInfo())
 	} else {
-		out.WriteString(prefixIndent + "Node - " + node.Obj.(EntityDebug).DebugString())
+		out.WriteString(prefixIndent + "Node - " + node.Entity.(ContainVerbatimText).DebugInfo())
 	}
 	// Recursively descent into leaves
 	if len(node.Leaves) > 0 {
@@ -32,23 +35,25 @@ func DebugNode(node *DocumentNode, indent int) string {
 }
 
 // Offer debugging capabilities to a lexer.
-type LexerDebugger interface {
-	Printf(format string, msg ...interface{})
+type LexerDebug interface {
+	Printfln(format string, msg ...interface{})
 }
 
-// A LexerDebugger implementation that is silent and does nothing.
-type NoopDebugger struct {
+// Not to debug a lexer by discarding debug messages.
+type LexerDebugNoop struct {
 }
 
-func (debug *NoopDebugger) Printf(format string, msg ...interface{}) {
+// Do nothing.
+func (debug *LexerDebugNoop) Printfln(format string, msg ...interface{}) {
 	// Intentionally left blank
 }
 
-// A LexerDebugger implementation that prints messages to standard output.
-type PrintDebugger struct {
+// Debug a lexer by printing debug messages to standard output.
+type LexerDebugStdout struct {
 }
 
-func (debug *PrintDebugger) Printf(format string, msg ...interface{}) {
+// Print debug messages to standard output.
+func (debug *LexerDebugStdout) Printfln(format string, msg ...interface{}) {
 	fmt.Printf(format, msg...)
 	fmt.Println()
 }

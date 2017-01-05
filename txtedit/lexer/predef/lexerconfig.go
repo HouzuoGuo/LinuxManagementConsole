@@ -1,11 +1,11 @@
-package predeflex
+package predef
 
 import "github.com/HouzuoGuo/LinuxManagementConsole/txtedit/lexer"
 
 var Sysconfig = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
 	TokenBreakMarkers:            []string{"="},
 	SectionStyle:                 lexer.SectionStyle{},
@@ -14,7 +14,7 @@ var Sysconfig = lexer.LexerConfig{
 var Sysctl = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	TokenBreakMarkers:            []string{"="},
 	SectionStyle:                 lexer.SectionStyle{},
@@ -23,7 +23,7 @@ var Sysctl = lexer.LexerConfig{
 var Systemd = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
 	TokenBreakMarkers:            []string{"="},
 	SectionStyle: lexer.SectionStyle{
@@ -36,7 +36,7 @@ var Systemd = lexer.LexerConfig{
 var CronAllowDeny = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{}},
+	CommentStyles:                []lexer.CommentStyle{{}},
 	TextQuoteStyle:               []string{},
 	TokenBreakMarkers:            []string{},
 	SectionStyle:                 lexer.SectionStyle{},
@@ -45,7 +45,7 @@ var CronAllowDeny = lexer.LexerConfig{
 var Cron = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	TokenBreakMarkers:            []string{},
 	SectionStyle:                 lexer.SectionStyle{},
@@ -54,7 +54,7 @@ var Cron = lexer.LexerConfig{
 var Hosts = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	TokenBreakMarkers:            []string{},
 	SectionStyle:                 lexer.SectionStyle{},
@@ -63,7 +63,7 @@ var Hosts = lexer.LexerConfig{
 var Login = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	TokenBreakMarkers:            []string{},
 	SectionStyle:                 lexer.SectionStyle{},
@@ -72,7 +72,7 @@ var Login = lexer.LexerConfig{
 var Nsswitch = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	TokenBreakMarkers:            []string{},
 	SectionStyle:                 lexer.SectionStyle{},
@@ -81,7 +81,7 @@ var Nsswitch = lexer.LexerConfig{
 var Httpd = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{"\\"},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\"", "'"},
 	TokenBreakMarkers:            []string{":"},
 	SectionStyle: lexer.SectionStyle{
@@ -95,9 +95,9 @@ var Named = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{"\\"},
 	StatementEndingMarkers:       []string{";\n", ";"},
 	CommentStyles: []lexer.CommentStyle{
-		lexer.CommentStyle{Opening: "/*", Closing: "*/"},
-		lexer.CommentStyle{Opening: "//", Closing: "\n"},
-		lexer.CommentStyle{Opening: "#", Closing: "\n"}},
+		{Opening: "/*", Closing: "*/"},
+		{Opening: "//", Closing: "\n"},
+		{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:    []string{"\"", "'"},
 	TokenBreakMarkers: []string{},
 	SectionStyle: lexer.SectionStyle{
@@ -110,7 +110,7 @@ var Named = lexer.LexerConfig{
 var NamedZone = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: ";", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{{Opening: ";", Closing: "\n"}},
 	TextQuoteStyle:               []string{},
 	TokenBreakMarkers:            []string{},
 	SectionStyle: lexer.SectionStyle{
@@ -123,7 +123,7 @@ var NamedZone = lexer.LexerConfig{
 var Dhcpd = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{";\n", ";"},
-	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
 	TokenBreakMarkers:            []string{},
 	SectionStyle: lexer.SectionStyle{
@@ -136,7 +136,7 @@ var Dhcpd = lexer.LexerConfig{
 var Ntpd = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
 	TokenBreakMarkers:            []string{},
 	SectionStyle:                 lexer.SectionStyle{},
@@ -145,7 +145,7 @@ var Ntpd = lexer.LexerConfig{
 var Limits = lexer.LexerConfig{
 	StatementContinuationMarkers: []string{},
 	StatementEndingMarkers:       []string{"\n"},
-	CommentStyles:                []lexer.CommentStyle{lexer.CommentStyle{Opening: "#", Closing: "\n"}},
+	CommentStyles:                []lexer.CommentStyle{{Opening: "#", Closing: "\n"}},
 	TextQuoteStyle:               []string{"\""},
 	TokenBreakMarkers:            []string{},
 	SectionStyle:                 lexer.SectionStyle{},

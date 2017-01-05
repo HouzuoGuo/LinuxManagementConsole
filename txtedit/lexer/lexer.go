@@ -5,9 +5,9 @@ The lexer analyses input text character by character, breaks down the whole docu
 pieces that are easier for further analysis and reproduction of document text.
 */
 type Lexer struct {
-	textInput string        // the original input text
-	config    *LexerConfig  // document style specification and more configuration
-	debug     LexerDebugger // handle output from lexer's progress and debug information
+	textInput string       // the original input text
+	config    *LexerConfig // document style specification and more configuration
+	debug     LexerDebug   // handle output from lexer's progress and debug information
 
 	previousMarkerPosition int           // the character index where previous marker was encountered
 	herePosition           int           // index of the current character where lexer has progressed
@@ -23,19 +23,19 @@ type Lexer struct {
 }
 
 // Initialise a new text lexer.
-func NewLexer(textInput string, config *LexerConfig, debugger LexerDebugger) (ret *Lexer) {
+func NewLexer(textInput string, config *LexerConfig, debugger LexerDebug) (ret *Lexer) {
 	ret = &Lexer{textInput: textInput, config: config, debug: debugger}
-	ret.thisNode = &DocumentNode{Parent: nil, Obj: nil, Leaves: make([]*DocumentNode, 0, 8)}
+	ret.thisNode = &DocumentNode{Parent: nil, Entity: nil, Leaves: make([]*DocumentNode, 0, 8)}
 	ret.rootNode = ret.thisNode
 	ret.config.SectionStyle.SetSectionMatchMechanism()
-	ret.debug.Printf("NewLexer: initialised with section match mechanism being %v", ret.config.SectionStyle.SectionMatchMechanism)
+	ret.debug.Printfln("NewLexer: initialised with section match mechanism being %v", ret.config.SectionStyle.SectionMatchMechanism)
 	return
 }
 
 // Create a new sibling node if the current node is already holding an object. Move reference to the new sibling.
 func (an *Lexer) createSiblingNodeIfNotNil() {
-	if an.thisNode.Obj == nil {
-		an.debug.Printf("createSiblingNodeIfNotNil: does nothing when this node %p is still empty", an.thisNode)
+	if an.thisNode.Entity == nil {
+		an.debug.Printfln("createSiblingNodeIfNotNil: does nothing when this node %p is still empty", an.thisNode)
 		return
 	}
 	if parent := an.thisNode.Parent; parent == nil {
@@ -50,13 +50,13 @@ func (an *Lexer) createSiblingNodeIfNotNil() {
 		newRoot.Leaves = append(newRoot.Leaves, newLeaf)
 		an.rootNode = newRoot
 		an.thisNode = newLeaf
-		an.debug.Printf("createSiblingNodeIfNotNil: new root is %p, original root %p is now a leaf, new sibling is %p",
+		an.debug.Printfln("createSiblingNodeIfNotNil: new root is %p, original root %p is now a leaf, new sibling is %p",
 			an.rootNode, originalRoot, newLeaf)
 	} else {
 		newLeaf := &DocumentNode{Parent: parent, Leaves: make([]*DocumentNode, 0, 8)}
 		parent.Leaves = append(parent.Leaves, newLeaf)
 		an.thisNode = newLeaf
-		an.debug.Printf("createSiblingNodeIfNotNil: new sibling is %p", newLeaf)
+		an.debug.Printfln("createSiblingNodeIfNotNil: new sibling is %p", newLeaf)
 	}
 }
 
@@ -66,16 +66,16 @@ Save an object in the current node.
 */
 func (an *Lexer) createDocumentSiblingNode(nodeContent interface{}) {
 	if nodeContent == nil {
-		an.debug.Printf("createDocumentSiblingNode: does nothing when node content is nil")
+		an.debug.Printfln("createDocumentSiblingNode: does nothing when node content is nil")
 		return
 	}
-	if an.thisNode.Obj == nil {
-		an.thisNode.Obj = nodeContent
+	if an.thisNode.Entity == nil {
+		an.thisNode.Entity = nodeContent
 	} else {
 		// Must not overwrite the object in thisNode
 		an.createSiblingNodeIfNotNil()
-		an.debug.Printf("createDocumentSiblingNode: store object %p in node %p", nodeContent, an.thisNode)
-		an.thisNode.Obj = nodeContent
+		an.debug.Printfln("createDocumentSiblingNode: store object %p in node %p", nodeContent, an.thisNode)
+		an.thisNode.Entity = nodeContent
 	}
 }
 
@@ -83,7 +83,7 @@ func (an *Lexer) createDocumentSiblingNode(nodeContent interface{}) {
 func (an *Lexer) createLeaf() {
 	newLeaf := &DocumentNode{Parent: an.thisNode, Leaves: make([]*DocumentNode, 0, 8)}
 	an.thisNode.Leaves = append(an.thisNode.Leaves, newLeaf)
-	an.debug.Printf("createLeaf: %p now has a new leaf %p", an.thisNode, newLeaf)
+	an.debug.Printfln("createLeaf: %p now has a new leaf %p", an.thisNode, newLeaf)
 	an.thisNode = newLeaf
 }
 
@@ -92,9 +92,9 @@ func (an *Lexer) createCommentIfNil(commentStyle CommentStyle) {
 	if an.contextComment == nil {
 		an.contextComment = new(Comment)
 		an.contextComment.CommentStyle = commentStyle
-		an.debug.Printf("createCommentIfNil: context comment is assigned to %p", an.contextComment)
+		an.debug.Printfln("createCommentIfNil: context comment is assigned to %p", an.contextComment)
 	} else {
-		an.debug.Printf("createCommentIfNil: comment style goes into %p", an.contextComment)
+		an.debug.Printfln("createCommentIfNil: comment style goes into %p", an.contextComment)
 		//		an.contextComment.Content += commentStyle
 	}
 }
@@ -108,7 +108,7 @@ func (an *Lexer) endComment(marker string, closed bool) {
 	an.saveMissedCharacters()
 	an.createStatementIfNil()
 	an.contextStatement.Pieces = append(an.contextStatement.Pieces, an.contextComment)
-	an.debug.Printf("endComment: comment %p is now a piece of statement %p", an.contextComment, an.contextStatement)
+	an.debug.Printfln("endComment: comment %p is now a piece of statement %p", an.contextComment, an.contextStatement)
 
 	oldComment := an.contextComment
 	an.contextComment = nil
@@ -132,7 +132,7 @@ func (an *Lexer) endComment(marker string, closed bool) {
 func (an *Lexer) createTextIfNil() {
 	if an.contextText == nil {
 		an.contextText = new(Text)
-		an.debug.Printf("createTextIfNil: context text is assigned to %p", an.contextText)
+		an.debug.Printfln("createTextIfNil: context text is assigned to %p", an.contextText)
 	}
 }
 
@@ -144,7 +144,7 @@ func (an *Lexer) endText() {
 	an.saveMissedCharacters()
 	an.createStatementIfNil()
 	an.contextStatement.Pieces = append(an.contextStatement.Pieces, an.contextText)
-	an.debug.Printf("endText: text %p is now a piece of statement %p", an.contextText, an.contextStatement)
+	an.debug.Printfln("endText: text %p is now a piece of statement %p", an.contextText, an.contextStatement)
 	an.contextText = nil
 }
 
@@ -153,26 +153,26 @@ func (an *Lexer) createStatementIfNil() {
 	if an.contextStatement == nil {
 		an.contextStatement = new(Statement)
 		an.createDocumentSiblingNode(an.contextStatement)
-		an.debug.Printf("createStatementIfNil: context statement is assigned to %p", an.contextStatement)
+		an.debug.Printfln("createStatementIfNil: context statement is assigned to %p", an.contextStatement)
 	}
 }
 
 // Move context text and comment into context statement (create new statement if necessary), and clear context statement.
 func (an *Lexer) endStatement(ending string) {
-	an.debug.Printf("endStatement: trying to end with %v", []byte(ending))
+	an.debug.Printfln("endStatement: trying to end with %v", []byte(ending))
 	if an.contextComment != nil && // if there is still a comment ...
 		!an.contextComment.Closed && // that has not been closed ...
 		an.contextComment.CommentStyle.Closing != ending && // and the statement ending does not close the comment
 		ending != "" { // and this is not "ending statement no matter what" situation
 		// If there is still a comment and the ending marker does not close the comment, only save the ending marker in the comment.
 		an.saveMissedCharacters()
-		an.debug.Printf("endStatement: the statement ending goes into open context comment %p", an.contextComment)
+		an.debug.Printfln("endStatement: the statement ending goes into open context comment %p", an.contextComment)
 		an.contextComment.Content += ending
 		return
 	}
 	if an.contextText != nil && an.contextText.QuoteStyle != "" {
 		an.saveMissedCharacters()
-		an.debug.Printf("endStatement: the statement ending goes into context text %p", an.contextText)
+		an.debug.Printfln("endStatement: the statement ending goes into context text %p", an.contextText)
 		an.contextText.Text += ending
 		return
 	}
@@ -181,14 +181,14 @@ func (an *Lexer) endStatement(ending string) {
 	an.endComment("", false)
 	an.endText()
 	if an.ignoreNewStatementOnce {
-		an.debug.Printf("endStatement: not creating new document node when ignoreNewStatementOnce is set")
+		an.debug.Printfln("endStatement: not creating new document node when ignoreNewStatementOnce is set")
 		an.ignoreNewStatementOnce = false
 		return
 	}
 	if an.contextStatement == nil && an.contextComment == nil && an.contextText == nil {
-		an.debug.Printf("endStatement: context comment and text are nil, nothing to save")
+		an.debug.Printfln("endStatement: context comment and text are nil, nothing to save")
 		if ending != "" {
-			an.debug.Printf("endStatement: save statement ending in a new statement")
+			an.debug.Printfln("endStatement: save statement ending in a new statement")
 			// The following branch is a workaround for input text "[]\n", assuming [] denotes a section.
 			//			if state, _ := an.getSectionState(); state == SECTION_STATE_END_NOW {
 			//				an.endSection()
@@ -223,12 +223,12 @@ func (an *Lexer) saveMissedCharacters() bool {
 	}
 	missedContent := an.textInput[an.previousMarkerPosition:an.herePosition]
 	if an.contextComment != nil {
-		an.debug.Printf("saveMissedText: missed content '%s' is stored in comment %p",
+		an.debug.Printfln("saveMissedText: missed content '%s' is stored in comment %p",
 			missedContent, an.contextComment)
 		an.contextComment.Content += missedContent
 	} else {
 		an.createTextIfNil()
-		an.debug.Printf("saveMissedText: missed content '%s' is stored in text %p",
+		an.debug.Printfln("saveMissedText: missed content '%s' is stored in text %p",
 			missedContent, an.contextText)
 		an.contextText.Text += missedContent
 	}
@@ -242,15 +242,15 @@ func (an *Lexer) saveSpaces(spaces string) {
 	length := len(spaces)
 	if an.ignoreNewStatementOnce {
 		an.endText()
-		an.debug.Printf("saveSpaces: ignoreNewStatementOnce is true, %d spaces go into text %p", length, an.contextText)
+		an.debug.Printfln("saveSpaces: ignoreNewStatementOnce is true, %d spaces go into text %p", length, an.contextText)
 		an.createTextIfNil()
 		an.contextText.TrailingSpaces += spaces
 		an.endText()
 	} else if an.contextComment != nil {
-		an.debug.Printf("saveSpaces: %d spaces go into comment %p", length, an.contextComment)
+		an.debug.Printfln("saveSpaces: %d spaces go into comment %p", length, an.contextComment)
 		an.contextComment.Content += spaces
 	} else if an.contextText != nil {
-		an.debug.Printf("saveSpaces: %d spaces go into text %p", length, an.contextText)
+		an.debug.Printfln("saveSpaces: %d spaces go into text %p", length, an.contextText)
 		an.contextText.TrailingSpaces = spaces
 		an.endText()
 	} else if an.contextStatement != nil && len(an.contextStatement.Pieces) > 0 {
@@ -258,10 +258,10 @@ func (an *Lexer) saveSpaces(spaces string) {
 		switch t := lastPiece.(type) {
 		case *Text:
 			t.TrailingSpaces += spaces
-			an.debug.Printf("saveSpaces: %d spaces go into last text piece %p", length, t)
+			an.debug.Printfln("saveSpaces: %d spaces go into last text piece %p", length, t)
 		case *StatementContinue:
 			an.createTextIfNil()
-			an.debug.Printf("saveSpaces: %d spaces go into new text piece %p", an.contextText)
+			an.debug.Printfln("saveSpaces: %d spaces go into new text piece %p", an.contextText)
 			an.contextText.TrailingSpaces += spaces
 			an.endText()
 		case *Comment:
@@ -276,7 +276,7 @@ func (an *Lexer) saveSpaces(spaces string) {
 						stmtClosedWithComment = true
 						an.endStatement("")
 						an.createStatementIfNil()
-						an.debug.Printf("saveSpaces: %d spaces go into indentation of a new statement %p",
+						an.debug.Printfln("saveSpaces: %d spaces go into indentation of a new statement %p",
 							length, an.contextStatement)
 						an.contextStatement.Indent += spaces
 						break
@@ -288,27 +288,27 @@ func (an *Lexer) saveSpaces(spaces string) {
 						a new text piece, and the text piece only holds the spaces.
 					*/
 					an.createTextIfNil()
-					an.debug.Printf("saveSpaces: %d spaces go into a new text piece %p",
+					an.debug.Printfln("saveSpaces: %d spaces go into a new text piece %p",
 						length, an.contextText)
 					an.contextText.TrailingSpaces = spaces
 					an.endText()
 				}
 			} else {
 				t.Content += spaces
-				an.debug.Printf("saveSpaces: %d spaces go into last comment piece %p", length, t)
+				an.debug.Printfln("saveSpaces: %d spaces go into last comment piece %p", length, t)
 			}
 		}
 	} else if an.contextStatement != nil {
-		an.debug.Printf("saveSpaces: %d spaces go into indentation of context statement %p",
+		an.debug.Printfln("saveSpaces: %d spaces go into indentation of context statement %p",
 			length, an.contextStatement)
 		an.contextStatement.Indent += spaces
 	} else if an.contextStatement == nil {
 		an.createStatementIfNil()
-		an.debug.Printf("saveSpaces: %d spaces go into indentation of a new statement %p",
+		an.debug.Printfln("saveSpaces: %d spaces go into indentation of a new statement %p",
 			length, an.contextStatement)
 		an.contextStatement.Indent += spaces
 	} else {
-		an.debug.Printf("saveSpaces: %d spaces have nowhere to go")
+		an.debug.Printfln("saveSpaces: %d spaces have nowhere to go")
 	}
 }
 
@@ -316,13 +316,13 @@ func (an *Lexer) saveSpaces(spaces string) {
 func (an *Lexer) saveQuoteOrCommentCharacters(str string) bool {
 	if an.contextComment != nil {
 		an.saveMissedCharacters()
-		an.debug.Printf("saveQuoteOrCommentCharacters: save '%s' in context comment %p", str, an.contextComment)
+		an.debug.Printfln("saveQuoteOrCommentCharacters: save '%s' in context comment %p", str, an.contextComment)
 		an.contextComment.Content += str
 		return true
 	}
 	if an.contextText != nil && an.contextText.QuoteStyle != "" {
 		an.saveMissedCharacters()
-		an.debug.Printf("saveQuoteOrCommentCharacters: save '%s' in context text %p", str, an.contextText)
+		an.debug.Printfln("saveQuoteOrCommentCharacters: save '%s' in context text %p", str, an.contextText)
 		an.contextText.Text += str
 		return true
 	}
@@ -332,7 +332,7 @@ func (an *Lexer) saveQuoteOrCommentCharacters(str string) bool {
 // Immediately end and finish the current text, then save the marker into a new text piece.
 func (an *Lexer) breakText(marker string) {
 	if an.saveQuoteOrCommentCharacters(marker) {
-		an.debug.Printf("breakToken: the marker went to saveQuoteOrCommentCharacters")
+		an.debug.Printfln("breakToken: the marker went to saveQuoteOrCommentCharacters")
 		return
 	}
 	an.saveMissedCharacters()
@@ -347,7 +347,7 @@ func (an *Lexer) breakText(marker string) {
 // Save missed text and prevent the next new statement from being created.
 func (an *Lexer) continueStatement(marker string) {
 	if an.saveQuoteOrCommentCharacters(marker) {
-		an.debug.Printf("continueStatement: the marker went to saveQuoteOrCommentCharacters")
+		an.debug.Printfln("continueStatement: the marker went to saveQuoteOrCommentCharacters")
 		return
 	}
 	an.saveMissedCharacters()
@@ -356,7 +356,7 @@ func (an *Lexer) continueStatement(marker string) {
 	an.createStatementIfNil()
 	an.contextStatement.Pieces = append(an.contextStatement.Pieces, &StatementContinue{Style: marker})
 	an.ignoreNewStatementOnce = true
-	an.debug.Printf("continueStatement: ignoreNewStatementOnce is set to true")
+	an.debug.Printfln("continueStatement: ignoreNewStatementOnce is set to true")
 }
 
 // Create a new section as document node, then shift thisNode to a leaf.
@@ -365,11 +365,11 @@ func (an *Lexer) createSection() {
 	newSection := new(Section)
 	newSection.StatementCounterAtOpening = an.statementCounter
 	if an.thisNode == an.rootNode {
-		an.debug.Printf("createSection: root node %p has the new section %p", an.thisNode, newSection)
+		an.debug.Printfln("createSection: root node %p has the new section %p", an.thisNode, newSection)
 		an.createLeaf()
-		an.thisNode.Obj = newSection
+		an.thisNode.Entity = newSection
 	} else {
-		an.debug.Printf("newSection: node %p has the new section %p", an.thisNode, newSection)
+		an.debug.Printfln("newSection: node %p has the new section %p", an.thisNode, newSection)
 		an.createDocumentSiblingNode(newSection)
 	}
 	an.createLeaf()
@@ -382,27 +382,27 @@ Return the Statement if it is found, return nil if not found.
 func (an *Lexer) removePreviousSiblingStatement() *Statement {
 	index := an.thisNode.GetMyLeafIndex()
 	if index == -1 {
-		an.debug.Printf("removePreviousSiblingStatement: cannot find node %p's leaf index",
+		an.debug.Printfln("removePreviousSiblingStatement: cannot find node %p's leaf index",
 			an.thisNode)
 		return nil
 	} else if index == 0 {
-		an.debug.Printf("removePreviousSiblingStatement: this node %p does not have a previous sibling",
+		an.debug.Printfln("removePreviousSiblingStatement: this node %p does not have a previous sibling",
 			an.thisNode)
 		return nil
 	}
 	// Look for a statement in the previous sibling
 	previousSibling := an.thisNode.Parent.Leaves[index-1]
-	if obj := previousSibling.Obj; obj == nil {
-		an.debug.Printf("removePreviousSiblingStatement: this node %p's previous leaf %p is empty",
+	if obj := previousSibling.Entity; obj == nil {
+		an.debug.Printfln("removePreviousSiblingStatement: this node %p's previous leaf %p is empty",
 			an.thisNode, previousSibling)
 		return nil
 	} else if stmt, ok := obj.(*Statement); !ok {
-		an.debug.Printf("removePreviousSiblingStatement: this node %p's previous leaf %p does not hold a statement",
+		an.debug.Printfln("removePreviousSiblingStatement: this node %p's previous leaf %p does not hold a statement",
 			an.thisNode, previousSibling)
 		return nil
 	} else {
 		// Remove the sibling and return the statement
-		an.debug.Printf("removePreviousSiblingStatement: this node %p's previous leaf %p holds a statement %p",
+		an.debug.Printfln("removePreviousSiblingStatement: this node %p's previous leaf %p holds a statement %p",
 			an.thisNode, previousSibling, stmt)
 		leaves := an.thisNode.Parent.Leaves
 		an.thisNode.Parent.Leaves = append(leaves[0:index-1], leaves[index:]...)
@@ -413,12 +413,12 @@ func (an *Lexer) removePreviousSiblingStatement() *Statement {
 // Assign the section its first and final statements if necessary, then move thisNode to a new sibling of its parent's.
 func (an *Lexer) endSection() {
 	if _, sect := an.getSectionState(); sect == nil {
-		an.debug.Printf("endSection: this node %p is not in a section", an.thisNode)
+		an.debug.Printfln("endSection: this node %p is not in a section", an.thisNode)
 	} else {
 		an.endStatement("")
 		// Move thisNode to its parent, the one holding *Section
 		an.thisNode = an.thisNode.Parent
-		an.debug.Printf("endSection: trying to finish section in node %p", an.thisNode)
+		an.debug.Printfln("endSection: trying to finish section in node %p", an.thisNode)
 		// Calculate the first and final statements
 		minNumLeaves := 0
 		if an.config.SectionStyle.OpenSectionWithAStatement {
@@ -437,22 +437,22 @@ func (an *Lexer) endSection() {
 			*/
 			if an.config.SectionStyle.OpeningPrefix == "" {
 				sect.FirstStatement = an.removePreviousSiblingStatement()
-				an.debug.Printf("endSection: first statement is the previous sibling %p", sect.FirstStatement)
+				an.debug.Printfln("endSection: first statement is the previous sibling %p", sect.FirstStatement)
 			} else {
 				sectionFirstLeaf := an.thisNode.Leaves[0]
 				if sect.MissingOpeningStatement {
-					an.debug.Printf("endSection: the section is missing its opening statement")
-				} else if leafObj := sectionFirstLeaf.Obj; leafObj == nil {
-					an.debug.Printf("endSection: first statement should be the first leaf %p but it holds nothing",
+					an.debug.Printfln("endSection: the section is missing its opening statement")
+				} else if leafObj := sectionFirstLeaf.Entity; leafObj == nil {
+					an.debug.Printfln("endSection: first statement should be the first leaf %p but it holds nothing",
 						sectionFirstLeaf)
-				} else if stmt, ok := sectionFirstLeaf.Obj.(*Statement); ok {
+				} else if stmt, ok := sectionFirstLeaf.Entity.(*Statement); ok {
 					an.thisNode.Leaves = an.thisNode.Leaves[1:]
 					sect.FirstStatement = stmt
 					minNumLeaves++
-					an.debug.Printf("endSection: first statement is the first leaf %p's content, statement %p",
+					an.debug.Printfln("endSection: first statement is the first leaf %p's content, statement %p",
 						sectionFirstLeaf, stmt)
 				} else {
-					an.debug.Printf("endSection: first statement should be the first leaf %p but it does not hold a statement",
+					an.debug.Printfln("endSection: first statement should be the first leaf %p but it does not hold a statement",
 						sectionFirstLeaf)
 				}
 			}
@@ -466,28 +466,28 @@ func (an *Lexer) endSection() {
 				</sectionA>     <=== "sectionA" is the ending statement
 			*/
 			if sect.MissingClosingStatement {
-				an.debug.Printf("endSection: although the section requires closing statement, there is none.")
+				an.debug.Printfln("endSection: although the section requires closing statement, there is none.")
 			} else if an.config.SectionStyle.ClosingPrefix != "" && an.config.SectionStyle.ClosingSuffix != "" {
 				// minNumLeaves is 0 if section does not begin with statement that is also the section's leaf
 				// minNumLeaves is 1 if section begins with a statement that is the section's leaf
 				if len(an.thisNode.Leaves) > minNumLeaves {
 					lastLeaf := an.thisNode.Leaves[len(an.thisNode.Leaves)-1]
 					if lastLeaf == nil {
-						an.debug.Printf("endSection: cannot assign final statement, the last leaf is nil.")
-					} else if stmt, ok := lastLeaf.Obj.(*Statement); ok {
+						an.debug.Printfln("endSection: cannot assign final statement, the last leaf is nil.")
+					} else if stmt, ok := lastLeaf.Entity.(*Statement); ok {
 						an.thisNode.Leaves = an.thisNode.Leaves[0 : len(an.thisNode.Leaves)-1]
 						sect.FinalStatement = stmt
-						an.debug.Printf("endSection: final statement is the last leaf %p's content, statement %p",
+						an.debug.Printfln("endSection: final statement is the last leaf %p's content, statement %p",
 							lastLeaf, stmt)
 					} else {
-						an.debug.Printf("endSection: final statement should be the last leaf %p but it does not hold a statement",
+						an.debug.Printfln("endSection: final statement should be the last leaf %p but it does not hold a statement",
 							lastLeaf)
 					}
 				} else {
-					an.debug.Printf("endSection: cannot end section with a statement, there are not enough leaves.")
+					an.debug.Printfln("endSection: cannot end section with a statement, there are not enough leaves.")
 				}
 			} else {
-				an.debug.Printf("endSection: the config should specify both prefix and suffix in order to end a section with a statement")
+				an.debug.Printfln("endSection: the config should specify both prefix and suffix in order to end a section with a statement")
 			}
 		}
 		an.createSiblingNodeIfNotNil()
@@ -508,16 +508,16 @@ type SectionState int
 func (an *Lexer) getSectionState() (SectionState, *Section) {
 	// If thisNode is in a section, the parent node should hold a *Section.
 	if an.thisNode.Parent == nil {
-		an.debug.Printf("getSectionState: node %p's parent is nil", an.thisNode)
+		an.debug.Printfln("getSectionState: node %p's parent is nil", an.thisNode)
 		return SECTION_STATE_BEFORE_BEGIN, nil
-	} else if an.thisNode.Parent.Obj == nil {
-		an.debug.Printf("getSectionState: node %p's parent %p is empty", an.thisNode, an.thisNode.Parent)
+	} else if an.thisNode.Parent.Entity == nil {
+		an.debug.Printfln("getSectionState: node %p's parent %p is empty", an.thisNode, an.thisNode.Parent)
 		return SECTION_STATE_BEFORE_BEGIN, nil
 	}
-	section, isSect := an.thisNode.Parent.Obj.(*Section)
+	section, isSect := an.thisNode.Parent.Entity.(*Section)
 	if !isSect {
-		an.debug.Printf("getSectionState: node %p's parent %p holds a %+v, which is not a *Section",
-			an.thisNode, an.thisNode.Parent, an.thisNode.Parent.Obj)
+		an.debug.Printfln("getSectionState: node %p's parent %p holds a %+v, which is not a *Section",
+			an.thisNode, an.thisNode.Parent, an.thisNode.Parent.Entity)
 		return SECTION_STATE_BEFORE_BEGIN, nil
 	}
 	var state SectionState
@@ -557,9 +557,9 @@ func (an *Lexer) getSectionState() (SectionState, *Section) {
 			state = SECTION_STATE_END_NOW
 		}
 	default:
-		an.debug.Printf("getSectionState: unknown SectionMatchMechanism")
+		an.debug.Printfln("getSectionState: unknown SectionMatchMechanism")
 	}
-	an.debug.Printf("getSectionState: state is %v, section is %p", state, section)
+	an.debug.Printfln("getSectionState: state is %v, section is %p", state, section)
 	return state, section
 }
 
@@ -572,26 +572,25 @@ func (an *Lexer) setSectionOpeningPrefix(prefix string) {
 	state, sect := an.getSectionState()
 	if state == SECTION_STATE_BEFORE_BEGIN {
 		// Create a new section while not being in a section
-		an.debug.Printf("setSectionOpeningPrefix: create a new section from node %p", an.thisNode)
+		an.debug.Printfln("setSectionOpeningPrefix: create a new section from node %p", an.thisNode)
 		an.createSection()
-		an.thisNode.Parent.Obj.(*Section).OpeningPrefix = prefix
-	} else if an.config.SectionStyle.SectionMatchMechanism == SECTION_MATCH_FLAT_DOUBLE_ANCHOR ||
-		an.config.SectionStyle.SectionMatchMechanism == SECTION_MATCH_FLAT_DOUBLE_ANCHOR {
+		an.thisNode.Parent.Entity.(*Section).OpeningPrefix = prefix
+	} else if an.config.SectionStyle.SectionMatchMechanism == SECTION_MATCH_FLAT_DOUBLE_ANCHOR {
 		// Already in a section but document does not allow nested section
-		an.debug.Printf("setSectionOpeningPrefix: end section of node %p and create a new section", an.thisNode.Parent)
+		an.debug.Printfln("setSectionOpeningPrefix: end section of node %p and create a new section", an.thisNode.Parent)
 		an.endSection()
 		an.createSection()
-		an.thisNode.Parent.Obj.(*Section).OpeningPrefix = prefix
+		an.thisNode.Parent.Entity.(*Section).OpeningPrefix = prefix
 	} else if state == SECTION_STATE_END_NOW {
 		// Marker matches but section should end now
-		an.debug.Printf("setSectionOpeningPrefix: end section right now")
+		an.debug.Printfln("setSectionOpeningPrefix: end section right now")
 		sect.OpeningPrefix = prefix
 		an.endSection()
 	} else {
 		// Create a nested section
-		an.debug.Printf("setSectionOpeningPrefix: create a nested section from node %p", an.thisNode)
+		an.debug.Printfln("setSectionOpeningPrefix: create a nested section from node %p", an.thisNode)
 		an.createSection()
-		an.thisNode.Parent.Obj.(*Section).OpeningPrefix = prefix
+		an.thisNode.Parent.Entity.(*Section).OpeningPrefix = prefix
 	}
 }
 
@@ -608,16 +607,16 @@ func (an *Lexer) setSectionOpeningSuffix(suffix string) {
 		if sect.StatementCounterAtOpening == an.statementCounter {
 			sect.MissingOpeningStatement = true
 		}
-		an.debug.Printf("setSectionOpeningSuffix: end section right now (missing opening stmt? %v)", sect.MissingOpeningStatement)
+		an.debug.Printfln("setSectionOpeningSuffix: end section right now (missing opening stmt? %v)", sect.MissingOpeningStatement)
 		an.endSection()
 	} else if an.config.SectionStyle.SectionMatchMechanism == SECTION_MATCH_NESTED_DOUBLE_ANCHOR {
 		// Create a section or nested section
-		an.debug.Printf("setSectionOpeningSuffix: create a new section/nested section from node %p", an.thisNode)
+		an.debug.Printfln("setSectionOpeningSuffix: create a new section/nested section from node %p", an.thisNode)
 		an.createSection()
-		an.thisNode.Parent.Obj.(*Section).OpeningSuffix = suffix
+		an.thisNode.Parent.Entity.(*Section).OpeningSuffix = suffix
 	} else if state < SECTION_STATE_HAS_BEGIN_PREFIX || state > SECTION_STATE_HAS_BEGIN_SUFFIX {
 		// State is not right so the marker must have been text
-		an.debug.Printf("setSectionOpeningSuffix: state is not right so only store the characters")
+		an.debug.Printfln("setSectionOpeningSuffix: state is not right so only store the characters")
 		an.saveMissedCharacters()
 	} else {
 		// Set suffix if state is right
@@ -626,7 +625,7 @@ func (an *Lexer) setSectionOpeningSuffix(suffix string) {
 		if sect.StatementCounterAtOpening == an.statementCounter {
 			sect.MissingOpeningStatement = true
 		}
-		an.debug.Printf("setSectionOpeningSuffix: set suffix (missing opening stmt? %v)", sect.MissingOpeningStatement)
+		an.debug.Printfln("setSectionOpeningSuffix: set suffix (missing opening stmt? %v)", sect.MissingOpeningStatement)
 	}
 }
 
@@ -637,15 +636,15 @@ func (an *Lexer) setSectionClosingPrefix(prefix string) {
 	}
 	an.endStatement("")
 	if state, sect := an.getSectionState(); state == SECTION_STATE_END_NOW {
-		an.debug.Printf("setSectionClosingPrefix: end section right now")
+		an.debug.Printfln("setSectionClosingPrefix: end section right now")
 		sect.ClosingPrefix = prefix
 		sect.StatementCounterAtClosing = an.statementCounter
 		an.endSection()
 	} else if state < SECTION_STATE_HAS_BEGIN_SUFFIX || state > SECTION_STATE_HAS_END_PREFIX {
-		an.debug.Printf("setSectionClosingPrefix: state is not right so only store the characters")
+		an.debug.Printfln("setSectionClosingPrefix: state is not right so only store the characters")
 		an.saveMissedCharacters()
 	} else {
-		an.debug.Printf("setSectionClosingPrefix: set prefix")
+		an.debug.Printfln("setSectionClosingPrefix: set prefix")
 		sect.ClosingPrefix = prefix
 		sect.StatementCounterAtClosing = an.statementCounter
 	}
@@ -658,7 +657,7 @@ func (an *Lexer) setSectionClosingSuffix(suffix string) {
 	}
 	an.endStatement("")
 	if state, sect := an.getSectionState(); state >= SECTION_STATE_HAS_END_PREFIX {
-		an.debug.Printf("setSectionClosingSuffix: end section right now")
+		an.debug.Printfln("setSectionClosingSuffix: end section right now")
 		sect.ClosingSuffix = suffix
 		// If statement counter has not increased, then the opening statement does not exist.
 		if sect.StatementCounterAtClosing == an.statementCounter {
@@ -666,10 +665,10 @@ func (an *Lexer) setSectionClosingSuffix(suffix string) {
 		}
 		an.endSection()
 	} else if state < SECTION_STATE_HAS_END_PREFIX && an.config.SectionStyle.AmbiguousSectionSuffix {
-		an.debug.Printf("setSectionClosingSuffix: call setSectionSetBeginSuffix due to ambiguous suffix choice")
+		an.debug.Printfln("setSectionClosingSuffix: call setSectionSetBeginSuffix due to ambiguous suffix choice")
 		an.setSectionOpeningSuffix(suffix)
 	} else {
-		an.debug.Printf("setSectionClosingSuffix: set suffix")
+		an.debug.Printfln("setSectionClosingSuffix: set suffix")
 		sect.ClosingSuffix = suffix
 		// If statement counter has not increased, then the opening statement does not exist.
 		if sect.StatementCounterAtClosing == an.statementCounter {
@@ -739,7 +738,7 @@ func (an *Lexer) lookForSpaces() (string, int) {
 func (an *Lexer) setQuote(quoteStyle string) {
 	if an.contextComment != nil {
 		an.saveMissedCharacters()
-		an.debug.Printf("setQuote: quote '%s' goes into context comment", quoteStyle)
+		an.debug.Printfln("setQuote: quote '%s' goes into context comment", quoteStyle)
 		an.contextComment.Content += quoteStyle
 		return
 	}
@@ -750,14 +749,14 @@ func (an *Lexer) setQuote(quoteStyle string) {
 	}
 	an.createTextIfNil()
 	if an.contextText.QuoteStyle == "" {
-		an.debug.Printf("setQuote: begin quoting in text %p", an.contextText)
+		an.debug.Printfln("setQuote: begin quoting in text %p", an.contextText)
 		an.contextText.QuoteStyle = quoteStyle
 	} else {
 		if an.contextText.QuoteStyle == quoteStyle {
-			an.debug.Printf("setQuote: finish quoting in text %p", an.contextText)
+			an.debug.Printfln("setQuote: finish quoting in text %p", an.contextText)
 			an.endText()
 		} else {
-			an.debug.Printf("setQuote: quote '%s' goes into context text %p", an.contextText)
+			an.debug.Printfln("setQuote: quote '%s' goes into context text %p", an.contextText)
 			an.saveMissedCharacters()
 			an.contextText.Text += quoteStyle
 		}
@@ -772,7 +771,7 @@ func (an *Lexer) isOpeningComment() int {
 	}
 	for _, style := range an.config.CommentStyles {
 		if match, advance := an.lookFor(style.Opening); advance > 0 {
-			an.debug.Printf("Comment opening: %s", match)
+			an.debug.Printfln("Comment opening: %s", match)
 			an.saveMissedCharacters()
 			an.endText()
 			an.createCommentIfNil(style)
@@ -791,7 +790,7 @@ func (an *Lexer) isClosingComment() int {
 	for _, style := range an.config.CommentStyles {
 		if match, advance := an.lookFor(style.Closing); advance > 0 {
 			if match == an.contextComment.CommentStyle.Closing {
-				an.debug.Printf("Comment closing: %s", match)
+				an.debug.Printfln("Comment closing: %s", match)
 				an.endComment(match, true)
 				return advance
 			}
@@ -817,48 +816,48 @@ func (an *Lexer) Run() *DocumentNode {
 		} else if advance = an.isClosingComment(); advance > 0 {
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookForAnyOf(an.config.TextQuoteStyle); advance > 0 {
-			an.debug.Printf("Quote: %s", match)
+			an.debug.Printfln("Quote: %s", match)
 			an.setQuote(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if spaces, advance = an.lookForSpaces(); advance > 0 {
-			an.debug.Printf("Spaces: length %d", advance)
+			an.debug.Printfln("Spaces: length %d", advance)
 			an.saveSpaces(spaces)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookForAnyOf(an.config.TokenBreakMarkers); advance > 0 {
-			an.debug.Printf("Breaks: %s", match)
+			an.debug.Printfln("Breaks: %s", match)
 			an.breakText(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookForAnyOf(an.config.StatementContinuationMarkers); advance > 0 {
-			an.debug.Printf("Statement continuation: %s", match)
+			an.debug.Printfln("Statement continuation: %s", match)
 			an.continueStatement(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookForAnyOf(an.config.StatementEndingMarkers); advance > 0 {
-			an.debug.Printf("Statement ending: %v", []byte(match))
+			an.debug.Printfln("Statement ending: %v", []byte(match))
 			an.endStatement(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookFor(an.config.SectionStyle.ClosingSuffix); advance > 0 {
-			an.debug.Printf("Section closing suffix: %s", match)
+			an.debug.Printfln("Section closing suffix: %s", match)
 			an.setSectionClosingSuffix(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookFor(an.config.SectionStyle.ClosingPrefix); advance > 0 {
-			an.debug.Printf("Section closing prefix: %s", match)
+			an.debug.Printfln("Section closing prefix: %s", match)
 			an.setSectionClosingPrefix(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookFor(an.config.SectionStyle.OpeningSuffix); advance > 0 {
-			an.debug.Printf("Section opening suffix: %s", match)
+			an.debug.Printfln("Section opening suffix: %s", match)
 			an.setSectionOpeningSuffix(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else if match, advance = an.lookFor(an.config.SectionStyle.OpeningPrefix); advance > 0 {
-			an.debug.Printf("Section opening prefix: %s", match)
+			an.debug.Printfln("Section opening prefix: %s", match)
 			an.setSectionOpeningPrefix(match)
 			an.previousMarkerPosition = an.herePosition + advance
 		} else {
 			advance = 1
 		}
 	}
-	an.debug.Printf("Run: end statement for the last time")
+	an.debug.Printfln("Run: end statement for the last time")
 	an.endStatement("")
-	an.debug.Printf("Run: end all open sections for the last time")
+	an.debug.Printfln("Run: end all open sections for the last time")
 	// End all sections
 	for recursionGuard := 0; recursionGuard < 100 && an.thisNode.Parent != nil && an.thisNode.Parent != an.rootNode; recursionGuard++ {
 		an.endSection()

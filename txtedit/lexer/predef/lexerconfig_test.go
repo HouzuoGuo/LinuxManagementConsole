@@ -1,4 +1,4 @@
-package predeflex
+package predef
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-var sampleTextLocation = os.Getenv("GOPATH") + "/src/github.com/HouzuoGuo/LinuxManagementConsole/txtedit/commonlexer/samples/"
+var sampleTextLocation = os.Getenv("GOPATH") + "/src/github.com/HouzuoGuo/LinuxManagementConsole/txtedit/lexer/predef/samples/"
 
 var samples = []struct {
 	config   lexer.LexerConfig
@@ -31,7 +31,7 @@ var samples = []struct {
 	{Limits, "limits"},
 }
 
-func GetTextAround(str string, pos, length int) (ret string) {
+func GetTextAround(str string, pos, length int) string {
 	startPos := pos - length
 	if startPos < 0 {
 		startPos = 0
@@ -51,10 +51,10 @@ func TestTextBreakdown(t *testing.T) {
 		}
 		txtInputStr := string(txtInput)
 
-		an := lexer.NewLexer(txtInputStr, &sample.config, &lexer.NoopDebugger{})
+		an := lexer.NewLexer(txtInputStr, &sample.config, &lexer.LexerDebugNoop{})
 		fmt.Println("@@@@@@@@@@@@@@Going to analyse", sample.fileName)
 		rootNode := an.Run()
-		reproducedText := rootNode.TextString()
+		reproducedText := rootNode.VerbatimText()
 		fmt.Println(lexer.DebugNode(rootNode, 0))
 		lenOriginal := len(txtInputStr)
 		lenReproduced := len(reproducedText)

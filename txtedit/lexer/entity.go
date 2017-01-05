@@ -6,14 +6,15 @@ import (
 	"strings"
 )
 
-// Get the descriptive debug information from the document entity.
-type EntityDebug interface {
-	DebugString() string
-}
-
-// Recover original string from the document entity.
-type EntityToText interface {
-	TextString() string
+/*
+Document entities (such as Text, Comment, StatementContinue) as well as certain types of document
+nodes (such as Statement) store characters from the original document. The interface provides
+DebugInfo() for inspecting the attributes of such objects in human-readable form, and RecoverText()
+for reproducing exact characters that were written in the original document.
+*/
+type ContainVerbatimText interface {
+	DebugInfo() string
+	VerbatimText() string
 }
 
 // Text is optionally surrounded by quotation marks and trailing spaces.
@@ -23,24 +24,24 @@ type Text struct {
 	TrailingSpaces string
 }
 
-func (txt *Text) DebugString() string {
+func (txt *Text) DebugInfo() string {
 	return fmt.Sprintf("Quote[%s] Text[%s] Trailing[%s]", txt.QuoteStyle, txt.Text, txt.TrailingSpaces)
 }
-func (txt *Text) TextString() string {
+func (txt *Text) VerbatimText() string {
 	return fmt.Sprintf("%s%s%s%s", txt.QuoteStyle, txt.Text, txt.QuoteStyle, txt.TrailingSpaces)
 }
 
-// Comment is led by a marker.
+// Comment is led by a single marker, or surrounded by a pair of markers, depending on the style.
 type Comment struct {
 	CommentStyle CommentStyle
-	Closed       bool // style carries an opening and closing, this flag is true if the comment is properly closed.
+	Closed       bool // style carries comment anchors, this is true if the comment has a closing anchor.
 	Content      string
 }
 
-func (comment *Comment) DebugString() string {
+func (comment *Comment) DebugInfo() string {
 	return fmt.Sprintf("Comment[%s] Content[%s]", comment.CommentStyle.Opening, comment.Content)
 }
-func (comment *Comment) TextString() string {
+func (comment *Comment) VerbatimText() string {
 	closing := comment.CommentStyle.Closing
 	if !comment.Closed {
 		closing = ""
@@ -48,40 +49,41 @@ func (comment *Comment) TextString() string {
 	return fmt.Sprintf("%s%s%s", comment.CommentStyle.Opening, comment.Content, closing)
 }
 
-// Continuation marker leads to the combination of pieces from both current and the next statement.
+// Continuation marker leads to the merge of pieces from both current and the next statement.
 type StatementContinue struct {
 	Style string
 }
 
-func (cont *StatementContinue) DebugString() string {
+func (cont *StatementContinue) DebugInfo() string {
 	return fmt.Sprintf("Continue[%s]", cont.Style)
 }
-func (cont *StatementContinue) TextString() string {
+func (cont *StatementContinue) VerbatimText() string {
 	return cont.Style
 }
 
 /*
-Statement is made of leading indentation, suffix ending, pieces of texts, comments, and continuation markers.
-Statement is a document node.
+Statement is made of a leading indentation, a suffix ending, pieces of document entities such as
+texts, comments, and continuation markers.
+Statement is an entity of DocumentNode.
 */
 type Statement struct {
-	Indent string        // the leading spaces or tabs that indent the statement
-	Pieces []interface{} // pieces must be pointers to Text, Comment, or StatementContinue
-	Ending string        // the suffix (such as new-line character) that marks end of the statement
+	Indent string                // the leading spaces or tabs that indent the statement
+	Pieces []ContainVerbatimText // pieces can be anything (e.g. Text, Comment) but Statement.
+	Ending string                // the suffix (such as new-line character) that marks end of the statement
 }
 
-func (stmt *Statement) DebugString() string {
+func (stmt *Statement) DebugInfo() string {
 	var out bytes.Buffer
 	for _, piece := range stmt.Pieces {
-		out.WriteString("[" + piece.(EntityDebug).DebugString() + "]")
+		out.WriteString("[" + piece.DebugInfo() + "]")
 	}
 	return fmt.Sprintf("Indent[%s] Pieces%s End[%v]", stmt.Indent, out.String(), []byte(stmt.Ending))
 }
-func (stmt *Statement) TextString() string {
+func (stmt *Statement) VerbatimText() string {
 	var out bytes.Buffer
 	out.WriteString(stmt.Indent)
 	for _, piece := range stmt.Pieces {
-		out.WriteString(piece.(EntityToText).TextString())
+		out.WriteString(piece.VerbatimText())
 	}
 	out.WriteString(stmt.Ending)
 	return out.String()
@@ -134,8 +136,9 @@ func (stmt *Statement) IndexOfTextSeq(skip int, seq []string, ignoreCase bool) (
 
 /*
 Section's opening and closing are determined by markers. Optionally, the markers surround statements.
-Section is a document node with leaves being its content; if a leaf is another Section, then it is a nested section.
-Original text is recovered from DocumentNode rather than Section, thus Section does not support EntityToText.
+Section is an entity of DocumentNode. Section content such as statements and nested sections are
+stored in leaves of DocumentNode. Verbatim text of a Section cannot be recovered via Section alone,
+it is recovered via DocumentNode.VerbatimText().
 */
 type Section struct {
 	FirstStatement               *Statement
@@ -144,7 +147,7 @@ type Section struct {
 	FinalStatement               *Statement
 
 	/*
-	 The following two flags are used when section's opening is marked by both prefix and suffix,
+	 The following flags are used when section's opening is marked by both prefix and suffix,
 	 or its closing is marked by both prefix and suffix.
 	*/
 
@@ -154,14 +157,14 @@ type Section struct {
 	MissingClosingStatement   bool
 }
 
-func (sect *Section) DebugString() string {
+func (sect *Section) DebugInfo() string {
 	beginStmtStr := ""
 	if sect.FirstStatement != nil {
-		beginStmtStr = sect.FirstStatement.DebugString()
+		beginStmtStr = sect.FirstStatement.DebugInfo()
 	}
 	endStmtStr := ""
 	if sect.FinalStatement != nil {
-		endStmtStr = sect.FinalStatement.DebugString()
+		endStmtStr = sect.FinalStatement.DebugInfo()
 	}
 	return fmt.Sprintf("Section %s%s%s Closing with %s%s%s",
 		sect.OpeningPrefix, beginStmtStr, sect.OpeningSuffix,
@@ -169,13 +172,13 @@ func (sect *Section) DebugString() string {
 }
 
 /*
-Document nodes together make a tree of entities that represent the original document text.
-If a node comes with branches, then the node must be a Section.
-Only Statement and Section can be nodes.
+DocumentNode contains a Section or Statement as its entity.
+Section node has leaf section/statement as its entity.
+The root DocumentNode can recover verbatim text of input document.
 */
 type DocumentNode struct {
 	Parent *DocumentNode
-	Obj    interface{} // node content (object) must be a pointer
+	Entity interface{} // pointer to Statement or Section
 	Leaves []*DocumentNode
 }
 
@@ -192,27 +195,27 @@ func (node *DocumentNode) GetMyLeafIndex() int {
 	return -1
 }
 
-func (node *DocumentNode) TextString() string {
+func (node *DocumentNode) VerbatimText() string {
 	var out bytes.Buffer
-	section, isSection := node.Obj.(*Section)
+	section, isSection := node.Entity.(*Section)
 	if isSection {
 		// Write section opening prefix, first statement, and suffix.
 		out.WriteString(section.OpeningPrefix)
 		if section.FirstStatement != nil {
-			out.WriteString(section.FirstStatement.TextString())
+			out.WriteString(section.FirstStatement.VerbatimText())
 		}
 		out.WriteString(section.OpeningSuffix)
-	} else if node.Obj != nil {
-		out.WriteString(node.Obj.(EntityToText).TextString())
+	} else if node.Entity != nil {
+		out.WriteString(node.Entity.(ContainVerbatimText).VerbatimText())
 	}
 	for _, leaf := range node.Leaves {
-		out.WriteString(leaf.TextString())
+		out.WriteString(leaf.VerbatimText())
 	}
 	if isSection {
 		// Write section closing prefix, final statement, and suffix.
 		out.WriteString(section.ClosingPrefix)
 		if section.FinalStatement != nil {
-			out.WriteString(section.FinalStatement.TextString())
+			out.WriteString(section.FinalStatement.VerbatimText())
 		}
 		out.WriteString(section.ClosingSuffix)
 	}
