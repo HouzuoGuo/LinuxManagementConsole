@@ -15,20 +15,21 @@ var samples = []struct {
 	config   lexer.LexerConfig
 	fileName string
 }{
-	{Sysconfig, "sysconfig"},
-	{Systemd, "systemd"},
-	{Sysctl, "sysctl"},
-	{CronAllowDeny, "cron-allow-deny"},
-	{Cron, "cron"},
+	{CronAllow, "cron.allow"},
+	{Crontab, "crontab"},
+	{DhcpdConf, "dhcpd.conf"},
 	{Hosts, "hosts"},
-	{Login, "login"},
+	{HttpdConf, "httpd.conf"},
+	{LimitsConf, "limits.conf"},
+	{LoginDefs, "login.defs"},
+	{NamedConf, "named.conf"},
+	{NamedZone, "named.zone"},
 	{Nsswitch, "nsswitch"},
-	{Httpd, "httpd"},
-	{NamedZone, "named-zone"},
-	{Named, "named"},
-	{Dhcpd, "dhcpd"},
-	{Ntpd, "ntpd"},
-	{Limits, "limits"},
+	{NtpConf, "ntp.conf"},
+	{PostfixMainCf, "postfix-main.cf"},
+	{Sysconfig, "sysconfig"},
+	{SysctlConf, "sysctl.conf"},
+	{SystemdConf, "systemd.conf"},
 }
 
 func GetTextAround(str string, pos, length int) string {
