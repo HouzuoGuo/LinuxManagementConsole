@@ -1,0 +1,28 @@
+Walk through lexer output piece by piece, recursively, while building up trees like this:
+
+(dhcpd)
+section: {subnet=10.x.x.x, netmask=255.x.x.x}
+- value: {directive=option, attribute=broadcast-address, value=10.254.x.x.x}
+- value: {directive=default-lease-time, value=10.254.x.x.x}
+
+(httpd)
+section: {type=directory, "/srv/www/vhosts/dummy-host.example.com/}
+- value: {key=AllowOverride, value=None}
+- value: {key=Options, subkey=Indexes, value=FollowSymLinks}
+
+Nested sections are allowed.
+
+Attribute value or combination of values are indexed in order to assist in navigation of the result trees.
+
+Structures of indexes are:
+
+Root index:
+  section attribute A { value => []sections }
+  section attribute A + attribute B { (value A, value B) => []sections }
+
+Each section has its own set of indexes:
+  section0xaaa {
+    section attribute A { value => []sections }
+    section attribute A + attribute B { (value A, value B) => []sections }
+    key A { value => []values}
+    key A + key B { (value A, value B) => []values }
